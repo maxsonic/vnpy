@@ -64,7 +64,9 @@ class BacktestingEngine(object):
 
         self.capital = 1000000      # 回测时的起始本金（默认100万）
         self.slippage = 0           # 回测时假设的滑点
+        self.slippageFunc = None
         self.rate = 0               # 回测时假设的佣金比例（适用于百分比佣金）
+        self.rateFunc = None
         self.size = 1               # 合约大小，默认为1    
         self.priceTick = 0          # 价格最小变动 
         
@@ -157,9 +159,11 @@ class BacktestingEngine(object):
         self.capital = capital
     
     #----------------------------------------------------------------------
-    def setSlippage(self, slippage):
+    def setSlippage(self, slippage, slippageFunc=None):
         """设置滑点点数"""
         self.slippage = slippage
+        if slippageFunc is not None:
+            self.slippageFunc = slippageFunc
         
     #----------------------------------------------------------------------
     def setSize(self, size):
@@ -167,9 +171,11 @@ class BacktestingEngine(object):
         self.size = size
         
     #----------------------------------------------------------------------
-    def setRate(self, rate):
+    def setRate(self, rate, rateFunc=None):
         """设置佣金比例"""
         self.rate = rate
+        if rateFunc is not None:
+            self.rateFunc = rateFunc
         
     #----------------------------------------------------------------------
     def setPriceTick(self, priceTick):
@@ -250,7 +256,8 @@ class BacktestingEngine(object):
             func(data)     
             
         self.output(u'数据回放结束')
-        
+        self.strategy.onStop()
+
     #----------------------------------------------------------------------
     def newBar(self, bar):
         """新的K线"""
@@ -610,7 +617,8 @@ class BacktestingEngine(object):
                         closedVolume = min(exitTrade.volume, entryTrade.volume)
                         result = TradingResult(entryTrade.price, entryTrade.dt, 
                                                exitTrade.price, exitTrade.dt,
-                                               -closedVolume, self.rate, self.slippage, self.size)
+                                               -closedVolume, self.rate, self.slippage, self.size,
+                                               self.slippageFunc, self.rateFunc)
                         resultList.append(result)
                         
                         posList.extend([-1,0])
@@ -654,7 +662,8 @@ class BacktestingEngine(object):
                         closedVolume = min(exitTrade.volume, entryTrade.volume)
                         result = TradingResult(entryTrade.price, entryTrade.dt, 
                                                exitTrade.price, exitTrade.dt,
-                                               closedVolume, self.rate, self.slippage, self.size)
+                                               closedVolume, self.rate, self.slippage, self.size,
+                                               self.slippageFunc, self.rateFunc)
                         resultList.append(result)
                         
                         posList.extend([1,0])
@@ -691,12 +700,14 @@ class BacktestingEngine(object):
             
         for trade in longTrade:
             result = TradingResult(trade.price, trade.dt, endPrice, self.dt, 
-                                   trade.volume, self.rate, self.slippage, self.size)
+                                   trade.volume, self.rate, self.slippage, self.size,
+                                   self.slippageFunc, self.rateFunc)
             resultList.append(result)
             
         for trade in shortTrade:
             result = TradingResult(trade.price, trade.dt, endPrice, self.dt, 
-                                   -trade.volume, self.rate, self.slippage, self.size)
+                                   -trade.volume, self.rate, self.slippage, self.size,
+                                   self.slippageFunc, self.rateFunc)
             resultList.append(result)            
         
         # 检查是否有交易
@@ -834,6 +845,7 @@ class BacktestingEngine(object):
         plt.xticks(xindex, tradeTimeIndex, rotation=30)  # 旋转15
         
         plt.show()
+        return d
     
     #----------------------------------------------------------------------
     def clearBacktestingResult(self):
@@ -872,6 +884,7 @@ class BacktestingEngine(object):
             self.initStrategy(strategyClass, setting)
             self.runBacktesting()
             d = self.calculateBacktestingResult()
+            self.output(targetName)
             try:
                 targetValue = d[targetName]
             except KeyError:
@@ -906,7 +919,8 @@ class BacktestingEngine(object):
                                                  targetName, self.mode, 
                                                  self.startDate, self.initDays, self.endDate,
                                                  self.slippage, self.rate, self.size, self.priceTick,
-                                                 self.dbName, self.symbol)))
+                                                 self.dbName, self.symbol, self.slippageFunc,
+                                                 self.rateFunc, self.capital)))
         pool.close()
         pool.join()
         
@@ -917,6 +931,7 @@ class BacktestingEngine(object):
         self.output(u'优化结果：')
         for result in resultList:
             self.output(u'%s: %s' %(result[0], result[1]))    
+        return resultList
 
     #----------------------------------------------------------------------
     def updateDailyClose(self, dt, price):
@@ -946,7 +961,8 @@ class BacktestingEngine(object):
             dailyResult.previousClose = previousClose
             previousClose = dailyResult.closePrice
             
-            dailyResult.calculatePnl(openPosition, self.size, self.rate, self.slippage )
+            dailyResult.calculatePnl(openPosition, self.size, self.rate, self.slippage,
+                                     self.slippageFunc, self.rateFunc)
             openPosition = dailyResult.closePosition
             
         # 生成DataFrame
@@ -1090,6 +1106,7 @@ class BacktestingEngine(object):
         df['netPnl'].hist(bins=50)
         
         plt.show()
+        return df, result
        
         
 ########################################################################
@@ -1098,7 +1115,8 @@ class TradingResult(object):
 
     #----------------------------------------------------------------------
     def __init__(self, entryPrice, entryDt, exitPrice, 
-                 exitDt, volume, rate, slippage, size):
+                 exitDt, volume, rate, slippage, size, slippageFunc=None,
+                 rateFunc=None):
         """Constructor"""
         self.entryPrice = entryPrice    # 开仓价格
         self.exitPrice = exitPrice      # 平仓价格
@@ -1109,8 +1127,16 @@ class TradingResult(object):
         self.volume = volume    # 交易数量（+/-代表方向）
         
         self.turnover = (self.entryPrice+self.exitPrice)*size*abs(volume)   # 成交金额
-        self.commission = self.turnover*rate                                # 手续费成本
-        self.slippage = slippage*2*size*abs(volume)                         # 滑点成本
+        if rateFunc is None:
+            self.commission = self.turnover*rate                                # 手续费成本
+        else:
+            self.commission = rateFunc(self.turnover, rate)
+
+        if slippageFunc is None:
+            self.slippage = slippage*2*size*abs(volume)                         # 滑点成本
+        else:
+            self.slippage = slippageFunc(slippage, size, volume)
+
         self.pnl = ((self.exitPrice - self.entryPrice) * volume * size 
                     - self.commission - self.slippage)                      # 净盈亏
 
@@ -1147,7 +1173,8 @@ class DailyResult(object):
         self.tradeList.append(trade)
 
     #----------------------------------------------------------------------
-    def calculatePnl(self, openPosition=0, size=1, rate=0, slippage=0):
+    def calculatePnl(self, openPosition=0, size=1, rate=0, slippage=0,
+                     slippageFunc=None, rateFunc=None):
         """
         计算盈亏
         size: 合约乘数
@@ -1171,8 +1198,14 @@ class DailyResult(object):
             self.tradingPnl += posChange * (self.closePrice - trade.price) * size
             self.closePosition += posChange
             self.turnover += trade.price * trade.volume * size
-            self.commission += trade.price * trade.volume * size * rate
-            self.slippage += trade.volume * size * slippage
+            if rateFunc is None:
+                self.commission += trade.price * trade.volume * size * rate
+            else:
+                self.commission += rateFunc(trade.price * trade.volume * size, rate)
+            if slippageFunc is None:
+                self.slippage += trade.volume * size * slippage
+            else:
+                self.slippage += slippageFunc(slippage, size, trade.volume)
         
         # 汇总
         self.totalPnl = self.tradingPnl + self.positionPnl
@@ -1249,14 +1282,15 @@ def formatNumber(n):
 def optimize(strategyClass, setting, targetName,
              mode, startDate, initDays, endDate,
              slippage, rate, size, priceTick,
-             dbName, symbol):
+             dbName, symbol, slippageFunc, rateFunc, capital):
     """多进程优化时跑在每个进程中运行的函数"""
     engine = BacktestingEngine()
+    engine.setCapital(capital)
     engine.setBacktestingMode(mode)
     engine.setStartDate(startDate, initDays)
     engine.setEndDate(endDate)
-    engine.setSlippage(slippage)
-    engine.setRate(rate)
+    engine.setSlippage(slippage, slippageFunc)
+    engine.setRate(rate, rateFunc)
     engine.setSize(size)
     engine.setPriceTick(priceTick)
     engine.setDatabase(dbName, symbol)
@@ -1266,6 +1300,7 @@ def optimize(strategyClass, setting, targetName,
     
     df = engine.calculateDailyResult()
     df, d = engine.calculateDailyStatistics(df)
+
     try:
         targetValue = d[targetName]
     except KeyError:

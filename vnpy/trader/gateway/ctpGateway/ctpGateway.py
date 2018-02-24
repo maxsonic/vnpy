@@ -147,6 +147,13 @@ class CtpGateway(VtGateway):
         
         # 初始化并启动查询
         self.initQuery()
+
+    #--------------------------------------------------------------------
+    def disconnect(self):
+        #断开链接
+        #self.mdApi.close()
+        if self.tdConnected:
+            self.tdApi.close()
     
     #----------------------------------------------------------------------
     def subscribe(self, subscribeReq):
