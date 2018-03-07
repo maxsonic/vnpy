@@ -96,7 +96,8 @@ class BacktestingEngine(object):
         self.dt = None      # 最新的时间
         
         # 日线回测结果计算用
-        self.dailyResultDict = OrderedDict()
+        # self.dailyResultDict = OrderedDict()
+        self.dailyResultDict = {}
     
     #------------------------------------------------
     # 通用功能
@@ -190,7 +191,9 @@ class BacktestingEngine(object):
     def loadHistoryData(self):
         """载入历史数据"""
         self.dbClient = pymongo.MongoClient(globalSetting['mongoHost'], globalSetting['mongoPort'])
-        collection = self.dbClient[self.dbName][self.symbol]          
+        collections = {}
+        for symbol in self.symbol.split(","): 
+            collections[symbol] = self.dbClient[self.dbName][symbol]
 
         self.output(u'开始载入数据')
       
@@ -205,14 +208,64 @@ class BacktestingEngine(object):
         # 载入初始化需要用的数据
         flt = {'datetime':{'$gte':self.dataStartDate,
                            '$lt':self.strategyStartDate}}        
-        initCursor = collection.find(flt).sort('datetime')
+        
+        initCursors = {}
+        for symbol, collection in collections.iteritems():
+            initCursors[symbol] = collection.find(flt).sort('datetime')
         
         # 将数据从查询指针中读取出，并生成列表
         self.initData = []              # 清空initData列表
-        for d in initCursor:
-            data = dataClass()
-            data.__dict__ = d
-            self.initData.append(data)      
+        symbols = self.symbol.split(",")
+        tmpDataDict = {}
+        while True:
+            tmpDataDateTimeList = []
+            stopCount = 0
+            stopLevel = len(symbols)
+            for symbol in symbols:
+                # check whether alive
+                if not initCursors[symbol].alive:
+                    stopCount = stopCount + 1
+                    if stopCount == stopLevel:
+                        break
+                    continue
+                if tmpDataDict.get(symbol) is not None:
+                    oldData = tmpDataDict.get(symbol)
+                    tmpDataDateTimeList.append(oldData.datetime)
+                    continue
+                try:
+                    d = initCursors[symbol].next()
+                except StopIteration:
+                    break
+                data = dataClass()
+                data.__dict__ = d
+                tmpDataDict[symbol] = data
+                tmpDataDateTimeList.append(data.datetime)
+
+            # No data, break
+            if not tmpDataDict:
+                break
+
+            tmpDataDateTimeList.sort()
+            minDateTime = tmpDataDateTimeList[0]
+            
+
+            if len(set(tmpDataDateTimeList)) == 1:
+                self.initData.append(tmpDataDict.copy())      
+                tmpDataDict = {}
+            else:
+                dataDict = {}
+                for symbol, data in tmpDataDict.items():
+                    if data.datetime == minDateTime:
+                        dataDict[symbol] = data
+                        del tmpDataDict[symbol]
+                    elif data.datetime < minDateTime:
+                        del tmpDataDict[symbol]
+                self.initData.append(dataDict)      
+
+                # for d in initCursors[symbol]:
+                #     data = [dataClass()]
+                #     data.__dict__ = d
+                #     self.initData.append(data)      
         
         # 载入回测数据
         if not self.dataEndDate:
@@ -220,9 +273,19 @@ class BacktestingEngine(object):
         else:
             flt = {'datetime':{'$gte':self.strategyStartDate,
                                '$lte':self.dataEndDate}}  
-        self.dbCursor = collection.find(flt).sort('datetime')
+
+        self.dbCursor = {}
+        for symbol, collection in collections.iteritems():
+            self.dbCursor[symbol] = collection.find(flt).sort('datetime')
+
+        # self.dbCursor = collection.find(flt).sort('datetime')
         
-        self.output(u'载入完成，数据量：%s' %(initCursor.count() + self.dbCursor.count()))
+        self.output(u'载入完成，数据量：%s' %(sum([initCursor.count() 
+                                              for _, initCursor 
+                                              in initCursors.items()]) + 
+                                              sum([dbCursor.count() 
+                                               for _, dbCursor
+                                               in self.dbCursor.items()])))
         
     #----------------------------------------------------------------------
     def runBacktesting(self):
@@ -250,10 +313,59 @@ class BacktestingEngine(object):
         
         self.output(u'开始回放数据')
 
-        for d in self.dbCursor:
-            data = dataClass()
-            data.__dict__ = d
-            func(data)     
+        symbols = self.symbol.split(",")
+        tmpDataDict = {}
+        while True:
+            tmpDataDateTimeList = []
+            stopCount = 0
+            stopLevel = len(symbols)
+            for symbol in symbols:
+                # check whether alive
+                if not self.dbCursor[symbol].alive:
+                    stopCount = stopCount + 1
+                    if stopCount == stopLevel:
+                        break
+                    continue
+
+                if tmpDataDict.get(symbol) is not None:
+                    oldData = tmpDataDict.get(symbol)
+                    tmpDataDateTimeList.append(oldData.datetime)
+                    continue
+                try:
+                    d = self.dbCursor[symbol].next()
+                except StopIteration:
+                    break
+                data = dataClass()
+                data.__dict__ = d
+                tmpDataDict[symbol] = data
+                tmpDataDateTimeList.append(data.datetime)
+            # No data, break
+            if not tmpDataDict:
+                break
+
+            tmpDataDateTimeList.sort()
+            minDateTime = tmpDataDateTimeList[0]
+
+            if len(set(tmpDataDateTimeList)) == 1:
+                func(tmpDataDict)     
+                tmpDataDict = {}
+                # self.initData.append(tmpDataDateTimeDict)      
+            else:
+                dataDict = {}
+                for symbol, data in tmpDataDict.items():
+                    if data.datetime == minDateTime:
+                        dataDict[symbol] = data
+                        del tmpDataDict[symbol]
+                    elif data.datetime < minDateTime:
+                        del tmpDataDict[symbol]
+
+                func(dataDict)     
+                # self.initData.append(tmpDataDateTimeDict)
+
+        # for d in self.dbCursor:
+        #     data = dataClass()
+        #     data.__dict__ = d
+        #     func(data)     
             
         self.output(u'数据回放结束')
         self.strategy.onStop()
@@ -262,13 +374,16 @@ class BacktestingEngine(object):
     def newBar(self, bar):
         """新的K线"""
         self.bar = bar
-        self.dt = bar.datetime
+        symbols = bar.keys()
+        symbol = symbols[0]
+        self.dt = bar[symbol].datetime
         
         self.crossLimitOrder()      # 先撮合限价单
         self.crossStopOrder()       # 再撮合停止单
         self.strategy.onBar(bar)    # 推送K线到策略中
         
-        self.updateDailyClose(bar.datetime, bar.close)
+        for symbol, b in bar.items(): 
+            self.updateDailyClose(symbol, b.datetime, b.close)
     
     #----------------------------------------------------------------------
     def newTick(self, tick):
@@ -279,8 +394,8 @@ class BacktestingEngine(object):
         self.crossLimitOrder()
         self.crossStopOrder()
         self.strategy.onTick(tick)
-        
-        self.updateDailyClose(tick.datetime, tick.lastPrice)
+        for symbol, t in tick.items(): 
+            self.updateDailyClose(symbol, t.datetime, t.lastPrice)
         
     #----------------------------------------------------------------------
     def initStrategy(self, strategyClass, setting=None):
@@ -294,20 +409,22 @@ class BacktestingEngine(object):
     #----------------------------------------------------------------------
     def crossLimitOrder(self):
         """基于最新数据撮合限价单"""
-        # 先确定会撮合成交的价格
-        if self.mode == self.BAR_MODE:
-            buyCrossPrice = self.bar.low        # 若买入方向限价单价格高于该价格，则会成交
-            sellCrossPrice = self.bar.high      # 若卖出方向限价单价格低于该价格，则会成交
-            buyBestCrossPrice = self.bar.open   # 在当前时间点前发出的买入委托可能的最优成交价
-            sellBestCrossPrice = self.bar.open  # 在当前时间点前发出的卖出委托可能的最优成交价
-        else:
-            buyCrossPrice = self.tick.askPrice1
-            sellCrossPrice = self.tick.bidPrice1
-            buyBestCrossPrice = self.tick.askPrice1
-            sellBestCrossPrice = self.tick.bidPrice1
+
         
         # 遍历限价单字典中的所有限价单
         for orderID, order in self.workingLimitOrderDict.items():
+            # 先确定会撮合成交的价格
+            symbol = order.vtSymbol
+            if self.mode == self.BAR_MODE:
+                buyCrossPrice = self.bar[symbol].low        # 若买入方向限价单价格高于该价格，则会成交
+                sellCrossPrice = self.bar[symbol].high      # 若卖出方向限价单价格低于该价格，则会成交
+                buyBestCrossPrice = self.bar[symbol].open   # 在当前时间点前发出的买入委托可能的最优成交价
+                sellBestCrossPrice = self.bar[symbol].open  # 在当前时间点前发出的卖出委托可能的最优成交价
+            else:
+                buyCrossPrice = self.tick[symbol].askPrice1
+                sellCrossPrice = self.tick[symbol].bidPrice1
+                buyBestCrossPrice = self.tick[symbol].askPrice1
+                sellBestCrossPrice = self.tick[symbol].bidPrice1
             # 推送委托进入队列（未成交）的状态更新
             if not order.status:
                 order.status = STATUS_NOTTRADED
@@ -366,18 +483,20 @@ class BacktestingEngine(object):
     #----------------------------------------------------------------------
     def crossStopOrder(self):
         """基于最新数据撮合停止单"""
-        # 先确定会撮合成交的价格，这里和限价单规则相反
-        if self.mode == self.BAR_MODE:
-            buyCrossPrice = self.bar.high    # 若买入方向停止单价格低于该价格，则会成交
-            sellCrossPrice = self.bar.low    # 若卖出方向限价单价格高于该价格，则会成交
-            bestCrossPrice = self.bar.open   # 最优成交价，买入停止单不能低于，卖出停止单不能高于
-        else:
-            buyCrossPrice = self.tick.lastPrice
-            sellCrossPrice = self.tick.lastPrice
-            bestCrossPrice = self.tick.lastPrice
-        
         # 遍历停止单字典中的所有停止单
         for stopOrderID, so in self.workingStopOrderDict.items():
+            # 先确定会撮合成交的价格，这里和限价单规则相反
+            symbol = so.vtSymbol
+            if self.mode == self.BAR_MODE:
+                buyCrossPrice = self.bar[symbol].high    # 若买入方向停止单价格低于该价格，则会成交
+                sellCrossPrice = self.bar[symbol].low    # 若卖出方向限价单价格高于该价格，则会成交
+                bestCrossPrice = self.bar[symbol].open   # 最优成交价，买入停止单不能低于，卖出停止单不能高于
+            else:
+                buyCrossPrice = self.tick[symbol].lastPrice
+                sellCrossPrice = self.tick[symbol].lastPrice
+                bestCrossPrice = self.tick[symbol].lastPrice
+        
+
             # 判断是否会成交
             buyCross = so.direction==DIRECTION_LONG and so.price<=buyCrossPrice
             sellCross = so.direction==DIRECTION_SHORT and so.price>=sellCrossPrice
@@ -692,19 +811,30 @@ class BacktestingEngine(object):
                             else:
                                 pass                    
         
-        # 到最后交易日尚未平仓的交易，则以最后价格平仓
-        if self.mode == self.BAR_MODE:
-            endPrice = self.bar.close
-        else:
-            endPrice = self.tick.lastPrice
             
         for trade in longTrade:
+
+            # 到最后交易日尚未平仓的交易，则以最后价格平仓
+            symbol = trade.vtSymbol
+            if self.mode == self.BAR_MODE:
+                endPrice = self.bar[symbol].close
+            else:
+                endPrice = self.tick[symbol].lastPrice
+
             result = TradingResult(trade.price, trade.dt, endPrice, self.dt, 
                                    trade.volume, self.rate, self.slippage, self.size,
                                    self.slippageFunc, self.rateFunc)
             resultList.append(result)
             
         for trade in shortTrade:
+
+            # 到最后交易日尚未平仓的交易，则以最后价格平仓
+            symbol = trade.vtSymbol
+            if self.mode == self.BAR_MODE:
+                endPrice = self.bar[symbol].close
+            else:
+                endPrice = self.tick[symbol].lastPrice
+
             result = TradingResult(trade.price, trade.dt, endPrice, self.dt, 
                                    -trade.volume, self.rate, self.slippage, self.size,
                                    self.slippageFunc, self.rateFunc)
@@ -934,30 +1064,50 @@ class BacktestingEngine(object):
         return resultList
 
     #----------------------------------------------------------------------
-    def updateDailyClose(self, dt, price):
+    def updateDailyClose(self, symbol, dt, price):
         """更新每日收盘价"""
         date = dt.date()
-        
-        if date not in self.dailyResultDict:
-            self.dailyResultDict[date] = DailyResult(date, price)
+        if self.dailyResultDict.get(symbol) is None: 
+            self.dailyResultDict[symbol] = OrderedDict()
+
+        if date not in self.dailyResultDict[symbol]:
+            self.dailyResultDict[symbol][date] = DailyResult(date, price)
         else:
-            self.dailyResultDict[date].closePrice = price
+            self.dailyResultDict[symbol][date].closePrice = price
             
     #----------------------------------------------------------------------
+
     def calculateDailyResult(self):
+        dfs = []
+        result = pd.DataFrame()
+        for symbol, dl in self.dailyResultDict.items():
+            df = self._calculateDailyResult(symbol, dl)
+            dfs.append(df)
+        for df in dfs:
+            if result.empty:
+                result = df
+                continue
+            result = result + df
+
+        return result
+
+
+    def _calculateDailyResult(self, symbol, dailyResultDict):
         """计算按日统计的交易结果"""
         self.output(u'计算按日统计结果')
         
         # 将成交添加到每日交易结果中
         for trade in self.tradeDict.values():
+            if trade.vtSymbol != symbol:
+                continue
             date = trade.dt.date()
-            dailyResult = self.dailyResultDict[date]
+            dailyResult = dailyResultDict[date]
             dailyResult.addTrade(trade)
             
         # 遍历计算每日结果
         previousClose = 0
         openPosition = 0
-        for dailyResult in self.dailyResultDict.values():
+        for dailyResult in dailyResultDict.values():
             dailyResult.previousClose = previousClose
             previousClose = dailyResult.closePrice
             
@@ -967,7 +1117,7 @@ class BacktestingEngine(object):
             
         # 生成DataFrame
         resultDict = {k:[] for k in dailyResult.__dict__.keys()}
-        for dailyResult in self.dailyResultDict.values():
+        for dailyResult in dailyResultDict.values():
             for k, v in dailyResult.__dict__.items():
                 resultDict[k].append(v)
                 

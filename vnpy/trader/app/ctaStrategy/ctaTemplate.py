@@ -103,34 +103,34 @@ class CtaTemplate(object):
         raise NotImplementedError
     
     #----------------------------------------------------------------------
-    def buy(self, price, volume, stop=False):
+    def buy(self, symbol, price, volume, stop=False):
         """买开"""
-        return self.sendOrder(CTAORDER_BUY, price, volume, stop)
+        return self.sendOrder(symbol, CTAORDER_BUY, price, volume, stop)
     
     #----------------------------------------------------------------------
-    def sell(self, price, volume, stop=False):
+    def sell(self, symbol, price, volume, stop=False):
         """卖平"""
-        return self.sendOrder(CTAORDER_SELL, price, volume, stop)       
+        return self.sendOrder(symbol, CTAORDER_SELL, price, volume, stop)       
 
     #----------------------------------------------------------------------
-    def short(self, price, volume, stop=False):
+    def short(self, symbol, price, volume, stop=False):
         """卖开"""
-        return self.sendOrder(CTAORDER_SHORT, price, volume, stop)          
+        return self.sendOrder(symbol, CTAORDER_SHORT, price, volume, stop)          
  
     #----------------------------------------------------------------------
-    def cover(self, price, volume, stop=False):
+    def cover(self, symbol, price, volume, stop=False):
         """买平"""
-        return self.sendOrder(CTAORDER_COVER, price, volume, stop)
+        return self.sendOrder(symbol, CTAORDER_COVER, price, volume, stop)
         
     #----------------------------------------------------------------------
-    def sendOrder(self, orderType, price, volume, stop=False):
+    def sendOrder(self, symbol, orderType, price, volume, stop=False):
         """发送委托"""
         if self.trading:
             # 如果stop为True，则意味着发本地停止单
             if stop:
-                vtOrderIDList = self.ctaEngine.sendStopOrder(self.vtSymbol, orderType, price, volume, self)
+                vtOrderIDList = self.ctaEngine.sendStopOrder(symbol, orderType, price, volume, self)
             else:
-                vtOrderIDList = self.ctaEngine.sendOrder(self.vtSymbol, orderType, price, volume, self) 
+                vtOrderIDList = self.ctaEngine.sendOrder(symbol, orderType, price, volume, self) 
             return vtOrderIDList
         else:
             # 交易停止时发单返回空字符串
@@ -392,36 +392,46 @@ class BarManager(object):
 
     #----------------------------------------------------------------------
     def updateBar(self, bar):
-        """1分钟K线更新"""
+        """
+        bar is a dict here, symbol paired with bar data
+        so xminBar here should be a dict too
+        1分钟K线更新
+        """
         # 尚未创建对象
         if not self.xminBar:
-            self.xminBar = VtBarData()
-            
-            self.xminBar.vtSymbol = bar.vtSymbol
-            self.xminBar.symbol = bar.symbol
-            self.xminBar.exchange = bar.exchange
+            self.xminBar = dict()
+            for symbol, b in bar.items():
+                self.xminBar[symbol] = VtBarData()
+                
+                self.xminBar[symbol].vtSymbol = b.vtSymbol
+                self.xminBar[symbol].symbol = b.symbol
+                self.xminBar[symbol].exchange = b.exchange
         
-            self.xminBar.open = bar.open
-            self.xminBar.high = bar.high
-            self.xminBar.low = bar.low            
-            
-            self.xminBar.datetime = bar.datetime    # 以第一根分钟K线的开始时间戳作为X分钟线的时间戳
+                self.xminBar[symbol].open = b.open
+                self.xminBar[symbol].high = b.high
+                self.xminBar[symbol].low = b.low            
+                
+                self.xminBar[symbol].datetime = b.datetime    # 以第一根分钟K线的开始时间戳作为X分钟线的时间戳
         # 累加老K线
         else:
-            self.xminBar.high = max(self.xminBar.high, bar.high)
-            self.xminBar.low = min(self.xminBar.low, bar.low)
+            for symbol, b in bar.items():
+                self.xminBar[symbol].high = max(self.xminBar[symbol].high, b.high)
+                self.xminBar[symbol].low = min(self.xminBar[symbol].low, b.low)
     
         # 通用部分
-        self.xminBar.close = bar.close        
-        self.xminBar.openInterest = bar.openInterest
-        self.xminBar.volume += int(bar.volume)                
+        for symbol, b in bar.items():
+            self.xminBar[symbol].close = b.close        
+            self.xminBar[symbol].openInterest = b.openInterest
+            self.xminBar[symbol].volume += int(b.volume)                
             
         # X分钟已经走完
-        if not (bar.datetime.minute + 1) % self.xmin:   # 可以用X整除
+        anySymbol = bar.keys()[0]
+        if not (bar[anySymbol].datetime.minute + 1) % self.xmin:   # 可以用X整除
             # 生成上一X分钟K线的时间戳
-            self.xminBar.datetime = self.xminBar.datetime.replace(second=0, microsecond=0)  # 将秒和微秒设为0
-            self.xminBar.date = self.xminBar.datetime.strftime('%Y%m%d')
-            self.xminBar.time = self.xminBar.datetime.strftime('%H:%M:%S.%f')
+            for symbol, b in bar.items():
+                self.xminBar[symbol].datetime = self.xminBar[symbol].datetime.replace(second=0, microsecond=0)  # 将秒和微秒设为0
+                self.xminBar[symbol].date = self.xminBar[symbol].datetime.strftime('%Y%m%d')
+                self.xminBar[symbol].time = self.xminBar[symbol].datetime.strftime('%H:%M:%S.%f')
             
             # 推送
             self.onXminBar(self.xminBar)
