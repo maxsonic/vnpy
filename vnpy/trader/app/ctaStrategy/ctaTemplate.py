@@ -34,7 +34,7 @@ class CtaTemplate(object):
     # 策略的基本变量，由引擎管理
     inited = False                 # 是否进行了初始化
     trading = False                # 是否启动交易，由引擎管理
-    pos = 0                        # 持仓情况
+    pos =  dict()                       # 持仓情况
     
     # 参数列表，保存了参数的名称
     paramList = ['name',
@@ -169,9 +169,14 @@ class CtaTemplate(object):
         return self.ctaEngine.loadTick(self.tickDbName, self.vtSymbol, days)
     
     #----------------------------------------------------------------------
-    def loadBar(self, days):
-        """读取bar数据"""
-        return self.ctaEngine.loadBar(self.barDbName, self.vtSymbol, days)
+    def loadBar(self, days, symbolMap):
+        """
+        symbolMap is to map the current symbol with history data
+        {
+            "targetSymbolInBar": "historySymbol"
+        }
+        读取bar数据"""
+        return self.ctaEngine.loadBar(self.barDbName, symbolMap, days)
     
     #----------------------------------------------------------------------
     def writeCtaLog(self, content):

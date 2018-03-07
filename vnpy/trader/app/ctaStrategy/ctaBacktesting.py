@@ -459,10 +459,10 @@ class BacktestingEngine(object):
                 # 3. 则在实际中的成交价会是100而不是105，因为委托发出时市场的最优价格是100
                 if buyCross:
                     trade.price = min(order.price, buyBestCrossPrice)
-                    self.strategy.pos += order.totalVolume
+                    self.strategy.pos[trade.vtSymbol] += order.totalVolume
                 else:
                     trade.price = max(order.price, sellBestCrossPrice)
-                    self.strategy.pos -= order.totalVolume
+                    self.strategy.pos[trade.vtSymbol] -= order.totalVolume
                 
                 trade.volume = order.totalVolume
                 trade.tradeTime = self.dt.strftime('%H:%M:%S')
@@ -517,10 +517,10 @@ class BacktestingEngine(object):
                 trade.vtTradeID = tradeID
                 
                 if buyCross:
-                    self.strategy.pos += so.volume
+                    self.strategy.pos[trade.vtSymbol] += so.volume
                     trade.price = max(bestCrossPrice, so.price)
                 else:
-                    self.strategy.pos -= so.volume
+                    self.strategy.pos[trade.vtSymbol] -= so.volume
                     trade.price = min(bestCrossPrice, so.price)                
                 
                 self.limitOrderCount += 1
