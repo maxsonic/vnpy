@@ -351,46 +351,57 @@ class BarManager(object):
     def updateTick(self, tick):
         """TICK更新"""
         newMinute = False   # 默认不是新的一分钟
+        symbol = tick.vtSymbol
         
         # 尚未创建对象
         if not self.bar:
-            self.bar = VtBarData()
+            # self.bar = VtBarData()
+            self.bar = dict() # ad dict to VtBarData object
+            self.bar[symbol] = VtBarData()
             newMinute = True
         # 新的一分钟
-        elif self.bar.datetime.minute != tick.datetime.minute:
+        elif self.bar.get(symbol) is None:
+            self.bar[symbol] = VtBarData()
+            newMinute = True
+        elif self.bar[symbol].datetime.minute != tick.datetime.minute:
             # 生成上一分钟K线的时间戳
-            self.bar.datetime = self.bar.datetime.replace(second=0, microsecond=0)  # 将秒和微秒设为0
-            self.bar.date = self.bar.datetime.strftime('%Y%m%d')
-            self.bar.time = self.bar.datetime.strftime('%H:%M:%S.%f')
+            if self.bar.get(symbol) is None:
+                self.bar[symbol] = VtBarData()
+            self.bar[symbol].datetime = self.bar[symbol].datetime.replace(second=0, microsecond=0)  # 将秒和微秒设为0
+            self.bar[symbol].date = self.bar[symbol].datetime.strftime('%Y%m%d')
+            self.bar[symbol].time = self.bar[symbol].datetime.strftime('%H:%M:%S.%f')
             
             # 推送已经结束的上一分钟K线
             self.onBar(self.bar)
             
             # 创建新的K线对象
-            self.bar = VtBarData()
+            # self.bar = VtBarData()
+            self.bar = dict()
             newMinute = True
             
         # 初始化新一分钟的K线数据
         if newMinute:
-            self.bar.vtSymbol = tick.vtSymbol
-            self.bar.symbol = tick.symbol
-            self.bar.exchange = tick.exchange
+            if self.bar.get(symbol) is None:
+                self.bar[symbol] = VtBarData()
+            self.bar[symbol].vtSymbol = tick.vtSymbol
+            self.bar[symbol].symbol = tick.symbol
+            self.bar[symbol].exchange = tick.exchange
 
-            self.bar.open = tick.lastPrice
-            self.bar.high = tick.lastPrice
-            self.bar.low = tick.lastPrice
+            self.bar[symbol].open = tick.lastPrice
+            self.bar[symbol].high = tick.lastPrice
+            self.bar[symbol].low = tick.lastPrice
         # 累加更新老一分钟的K线数据
         else:                                   
-            self.bar.high = max(self.bar.high, tick.lastPrice)
-            self.bar.low = min(self.bar.low, tick.lastPrice)
+            self.bar[symbol].high = max(self.bar[symbol].high, tick.lastPrice)
+            self.bar[symbol].low = min(self.bar[symbol].low, tick.lastPrice)
 
         # 通用更新部分
-        self.bar.close = tick.lastPrice        
-        self.bar.datetime = tick.datetime  
-        self.bar.openInterest = tick.openInterest
+        self.bar[symbol].close = tick.lastPrice        
+        self.bar[symbol].datetime = tick.datetime  
+        self.bar[symbol].openInterest = tick.openInterest
    
         if self.lastTick:
-            self.bar.volume += (tick.volume - self.lastTick.volume) # 当前K线内的成交量
+            self.bar[symbol].volume += (tick.volume - self.lastTick.volume) # 当前K线内的成交量
             
         # 缓存Tick
         self.lastTick = tick
@@ -403,11 +414,11 @@ class BarManager(object):
         1分钟K线更新
         """
         # 尚未创建对象
-        if not self.xminBar:
-            self.xminBar = dict()
-            for symbol, b in bar.items():
+        self.xminBar = dict()
+        for symbol, b in bar.items():
+            if self.xminBar.get(symbol) is None:
                 self.xminBar[symbol] = VtBarData()
-                
+            
                 self.xminBar[symbol].vtSymbol = b.vtSymbol
                 self.xminBar[symbol].symbol = b.symbol
                 self.xminBar[symbol].exchange = b.exchange
@@ -417,9 +428,8 @@ class BarManager(object):
                 self.xminBar[symbol].low = b.low            
                 
                 self.xminBar[symbol].datetime = b.datetime    # 以第一根分钟K线的开始时间戳作为X分钟线的时间戳
-        # 累加老K线
-        else:
-            for symbol, b in bar.items():
+            # 累加老K线
+            else:
                 self.xminBar[symbol].high = max(self.xminBar[symbol].high, b.high)
                 self.xminBar[symbol].low = min(self.xminBar[symbol].low, b.low)
     

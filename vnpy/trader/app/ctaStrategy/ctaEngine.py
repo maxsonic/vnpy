@@ -230,6 +230,7 @@ class CtaEngine(object):
     #----------------------------------------------------------------------
     def processStopOrder(self, tick):
         """收到行情后处理本地停止单（检查是否要立即发出）"""
+        # vtSymbol = tick.vtSymbol
         vtSymbol = tick.vtSymbol
         
         # 首先检查是否有策略交易该合约
@@ -319,9 +320,9 @@ class CtaEngine(object):
             
             # 计算策略持仓
             if trade.direction == DIRECTION_LONG:
-                strategy.pos += trade.volume
+                strategy.pos[trade.vtSymbol] += trade.volume
             else:
-                strategy.pos -= trade.volume
+                strategy.pos[trade.vtSymbol] -= trade.volume
             
             self.callStrategyFunc(strategy, strategy.onTrade, trade)
             
@@ -341,19 +342,71 @@ class CtaEngine(object):
         self.mainEngine.dbInsert(dbName, collectionName, data.__dict__)
     
     #----------------------------------------------------------------------
-    def loadBar(self, dbName, collectionName, days):
+    def loadBar(self, dbName, symbolMap, days):
         """从数据库中读取Bar数据，startDate是datetime对象"""
         startDate = self.today - timedelta(days)
         
         d = {'datetime':{'$gte':startDate}}
-        barData = self.mainEngine.dbQuery(dbName, collectionName, d, 'datetime')
-        
+        targetSymbols = []
+        initCursors = {}
+        for targetSymbol, historySymbol in symbolMap.items():
+            targetSymbols.append(targetSymbol)
+
+            barData = self.mainEngine.dbQuery(dbName, historySymbol,
+                                              d, 'datetime')
+            initCursors[targetSymbol] = barData
+
         l = []
-        for d in barData:
-            bar = VtBarData()
-            bar.__dict__ = d
-            l.append(bar)
-        return l
+        tmpDataDict = {}
+        while True:
+            tmpDataDateTimeList = []
+            stopCount = 0
+            stopLevel = len(targetSymbols)
+            for symbol in targetSymbols:
+                # check whether alive
+                dir(initCursors[symbol])
+                type(initCursors[symbol])
+                if not initCursors[symbol]:
+                    stopCount = stopCount + 1
+                    if stopCount == stopLevel:
+                        break
+                    continue
+                if tmpDataDict.get(symbol) is not None:
+                    oldData = tmpDataDict.get(symbol)
+                    tmpDataDateTimeList.append(oldData.datetime)
+                    continue
+                try:
+                    d = initCursors[symbol].pop()
+                except StopIteration:
+                    break
+                data = VtBarData()
+                data.__dict__ = d
+                data.vtSymbol = symbol 
+                tmpDataDict[symbol] = data
+                tmpDataDateTimeList.append(data.datetime)
+
+            # No data, break
+            if not tmpDataDict:
+                break
+
+            tmpDataDateTimeList.sort()
+            minDateTime = tmpDataDateTimeList[0]
+            
+
+            if len(set(tmpDataDateTimeList)) == 1:
+                l.append(tmpDataDict.copy())      
+                tmpDataDict = {}
+            else:
+                dataDict = {}
+                for symbol, data in tmpDataDict.items():
+                    if data.datetime == minDateTime:
+                        dataDict[symbol] = data
+                        del tmpDataDict[symbol]
+                    elif data.datetime < minDateTime:
+                        del tmpDataDict[symbol]
+                l.append(dataDict)
+            
+            return l
     
     #----------------------------------------------------------------------
     def loadTick(self, dbName, collectionName, days):
@@ -409,27 +462,30 @@ class CtaEngine(object):
             self.strategyOrderDict[name] = set()
             
             # 保存Tick映射关系
-            if strategy.vtSymbol in self.tickStrategyDict:
-                l = self.tickStrategyDict[strategy.vtSymbol]
-            else:
-                l = []
-                self.tickStrategyDict[strategy.vtSymbol] = l
-            l.append(strategy)
+            vtSymbols = strategy.vtSymbol.split(",")
+            for vtSymbol in vtSymbols:
+                if vtSymbol in self.tickStrategyDict:
+                    l = self.tickStrategyDict[vtSymbol]
+                else:
+                    l = []
+                    self.tickStrategyDict[vtSymbol] = l
+                l.append(strategy)
             
             # 订阅合约
-            contract = self.mainEngine.getContract(strategy.vtSymbol)
-            if contract:
-                req = VtSubscribeReq()
-                req.symbol = contract.symbol
-                req.exchange = contract.exchange
-                
-                # 对于IB接口订阅行情时所需的货币和产品类型，从策略属性中获取
-                req.currency = strategy.currency
-                req.productClass = strategy.productClass
-                
-                self.mainEngine.subscribe(req, contract.gatewayName)
-            else:
-                self.writeCtaLog(u'%s的交易合约%s无法找到' %(name, strategy.vtSymbol))
+            for vtSymbol in vtSymbols:
+                contract = self.mainEngine.getContract(vtSymbol)
+                if contract:
+                    req = VtSubscribeReq()
+                    req.symbol = contract.symbol
+                    req.exchange = contract.exchange
+                    
+                    # 对于IB接口订阅行情时所需的货币和产品类型，从策略属性中获取
+                    req.currency = strategy.currency
+                    req.productClass = strategy.productClass
+                    
+                    self.mainEngine.subscribe(req, contract.gatewayName)
+                else:
+                    self.writeCtaLog(u'%s的交易合约%s无法找到' %(name, vtSymbol))
 
     #----------------------------------------------------------------------
     def initStrategy(self, name):

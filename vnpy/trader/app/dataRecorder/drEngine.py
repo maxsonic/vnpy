@@ -203,20 +203,20 @@ class DrEngine(object):
     #----------------------------------------------------------------------
     def onBar(self, bar):
         """分钟线更新"""
-        vtSymbol = bar.vtSymbol
-        
-        self.insertData(MINUTE_DB_NAME, vtSymbol, bar)
-        
-        if vtSymbol in self.activeSymbolDict:
-            activeSymbol = self.activeSymbolDict[vtSymbol]
-            self.insertData(MINUTE_DB_NAME, activeSymbol, bar)                    
-        
-        self.writeDrLog(text.BAR_LOGGING_MESSAGE.format(symbol=bar.vtSymbol, 
-                                                        time=bar.time, 
-                                                        open=bar.open, 
-                                                        high=bar.high, 
-                                                        low=bar.low, 
-                                                        close=bar.close))        
+        for vtSymbol in bar.keys():
+            
+            self.insertData(MINUTE_DB_NAME, vtSymbol, bar[vtSymbol])
+            
+            if vtSymbol in self.activeSymbolDict:
+                activeSymbol = self.activeSymbolDict[vtSymbol]
+                self.insertData(MINUTE_DB_NAME, activeSymbol, bar[vtSymbol])                    
+            
+            self.writeDrLog(text.BAR_LOGGING_MESSAGE.format(symbol=bar[vtSymbol].vtSymbol, 
+                                                            time=bar[vtSymbol].time, 
+                                                            open=bar[vtSymbol].open, 
+                                                            high=bar[vtSymbol].high, 
+                                                            low=bar[vtSymbol].low, 
+                                                            close=bar[vtSymbol].close))        
 
     #----------------------------------------------------------------------
     def registerEvent(self):

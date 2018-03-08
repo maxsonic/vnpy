@@ -290,6 +290,9 @@ class BacktestingEngine(object):
     #----------------------------------------------------------------------
     def runBacktesting(self):
         """运行回测"""
+
+        self.strategy.vtSymbol = self.symbol
+
         # 载入历史数据
         self.loadHistoryData()
         
