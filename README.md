@@ -1,9 +1,15 @@
 # By Traders, For Traders.
 
 
+
 ![vn.py-logo](http://vnpy.oss-cn-shanghai.aliyuncs.com/vnpy-logo.png)
 
 ---
+### Changes
+
+1. Support multi contract in the trading, input rb instead of rb1805 to read all the contracts from the ctp counter.
+2. Support multi contract in the backtesting, input multi contracts in the initial steps. The time frame will be aligned by the datetime automatically.
+3. Only supports minutes backtesting, tick backtesting is not support.
 
 ### 简介
 
