@@ -1087,15 +1087,23 @@ class BacktestingEngine(object):
         dfs = []
         result = pd.DataFrame()
         for symbol, dl in self.dailyResultDict.items():
-            df = self._calculateDailyResult(symbol, dl)
+            df = self._calculateDailyResult(symbol, dl.copy())
             dfs.append(df)
+
+        # tradeListDf = []
         for df in dfs:
             if result.empty:
                 result = df
+                # tradeListDf.append(result[["tradeList"]])    
+                result = result.drop("tradeList", axis=1)
                 continue
-            result = result + df
 
-        return result
+            # tradeListDf.append(df[["tradeList"]])    
+            df = df.drop("tradeList", axis=1)
+            result = result.add(df, fill_value=0)
+
+        # tradeList = pd.concat(tradeListDf)
+        return result #.merge(tradeList, left_index=True, right_index=True)
 
 
     def _calculateDailyResult(self, symbol, dailyResultDict):
@@ -1104,11 +1112,10 @@ class BacktestingEngine(object):
         
         # 将成交添加到每日交易结果中
         for trade in self.tradeDict.values():
-            if trade.vtSymbol != symbol:
-                continue
-            date = trade.dt.date()
-            dailyResult = dailyResultDict[date]
-            dailyResult.addTrade(trade)
+            if trade.vtSymbol == symbol:
+                date = trade.dt.date()
+                dailyResult = dailyResultDict[date]
+                dailyResult.addTrade(trade)
             
         # 遍历计算每日结果
         previousClose = 0

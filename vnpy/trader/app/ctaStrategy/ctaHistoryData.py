@@ -105,6 +105,42 @@ def loadMcCsv(fileName, dbName, symbol):
     print u'插入完毕，耗时：%s' % (time()-start)
 
 #----------------------------------------------------------------------
+# Date Time,Open,Close,High,Low,total_turnover,Volume,open_interest,basis_spread,limit_up,limit_down,trading_date,Adj Close
+def loadRQCsv(fileName, dbName, symbol):
+    """将Multicharts导出的csv格式的历史数据插入到Mongo数据库中"""
+    import csv
+    
+    start = time()
+    print u'开始读取CSV文件%s中的数据插入到%s的%s中' %(fileName, dbName, symbol)
+    
+    # 锁定集合，并创建索引
+    client = pymongo.MongoClient(globalSetting['mongoHost'], globalSetting['mongoPort']) 
+    collection = client[dbName][symbol]
+    collection.ensure_index([('datetime', pymongo.ASCENDING)], unique=True)   
+    
+    # 读取数据和插入到数据库
+    reader = csv.DictReader(file(fileName, 'r'))
+    for d in reader:
+        bar = VtBarData()
+        bar.vtSymbol = symbol
+        bar.symbol = symbol
+        bar.open = float(d['Open'])
+        bar.high = float(d['High'])
+        bar.low = float(d['Low'])
+        bar.close = float(d['Close'])
+        bar.date = datetime.strptime(d['Date Time'], '%Y-%m-%d %H:%M:%S').strftime('%Y%m%d')
+        bar.time = datetime.strptime(d['Date Time'], '%Y-%m-%d %H:%M:%S').strftime('%H:%M:%S')
+        bar.datetime = datetime.strptime(bar.date + ' ' + bar.time, '%Y%m%d %H:%M:%S')
+        bar.volume = d['Volume']
+        bar.openInterest = d['open_interest']
+
+        flt = {'datetime': bar.datetime}
+        collection.update_one(flt, {'$set':bar.__dict__}, upsert=True)  
+        print bar.date, bar.time
+    
+    print u'插入完毕，耗时：%s' % (time()-start)
+
+#----------------------------------------------------------------------
 def loadTbCsv(fileName, dbName, symbol):
     """将TradeBlazer导出的csv格式的历史分钟数据插入到Mongo数据库中"""
     import csv

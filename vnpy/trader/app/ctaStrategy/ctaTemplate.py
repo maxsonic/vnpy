@@ -450,7 +450,7 @@ class BarGenerator(object):
         for symbol, b in bar.items():
             self.xminBar[symbol].close = b.close        
             self.xminBar[symbol].openInterest = b.openInterest
-            self.xminBar[symbol].volume += int(b.volume)                
+            self.xminBar[symbol].volume += int(float(b.volume))                
             
         # X分钟已经走完
         anySymbol = bar.keys()[0]
