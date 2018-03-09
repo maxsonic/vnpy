@@ -46,10 +46,10 @@ def calculatePrice(f, k, r, t, v, cp):
     # 如果波动率为0，则直接返回期权空间价值
     if v <= 0:
         return max(0, cp * (f - k))
-    
-    d1 = (log(f / k) + (0.5 * pow(v, 2) + r) * t) / (v * sqrt(t))
+
+    d1 = (log(f / k) + (0.5 * pow(v, 2)) * t) / (v * sqrt(t))
     d2 = d1 - v * sqrt(t)
-    price = cp * (f * cdf(cp * d1) - k * cdf(cp * d2) * exp(-r * t))
+    price = cp * (f * cdf(cp * d1) - k * cdf(cp * d2)) * exp(-r * t)
     return price
 
 #----------------------------------------------------------------------
@@ -112,7 +112,7 @@ def calculateImpv(price, f, k, r, t, cp):
     
     if cp == 1 and (price > (f - k) * exp(-r * t)):
         meet = True
-    elif cp == -1 and (price > k * exp(-r * t) - f):
+    elif cp == -1 and (price > k - f):
         meet = True
     
     # 若不满足最小价值，则直接返回0

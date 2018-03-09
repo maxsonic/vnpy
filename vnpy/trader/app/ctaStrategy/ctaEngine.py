@@ -2,18 +2,6 @@
 
 '''
 本文件中实现了CTA策略引擎，针对CTA类型的策略，抽象简化了部分底层接口的功能。
-
-关于平今和平昨规则：
-1. 普通的平仓OFFSET_CLOSET等于平昨OFFSET_CLOSEYESTERDAY
-2. 只有上期所的品种需要考虑平今和平昨的区别
-3. 当上期所的期货有今仓时，调用Sell和Cover会使用OFFSET_CLOSETODAY，否则
-   会使用OFFSET_CLOSE
-4. 以上设计意味着如果Sell和Cover的数量超过今日持仓量时，会导致出错（即用户
-   希望通过一个指令同时平今和平昨）
-5. 采用以上设计的原因是考虑到vn.trader的用户主要是对TB、MC和金字塔类的平台
-   感到功能不足的用户（即希望更高频的交易），交易策略不应该出现4中所述的情况
-6. 对于想要实现4中所述情况的用户，需要实现一个策略信号引擎和交易委托引擎分开
-   的定制化统结构（没错，得自己写）
 '''
 
 from __future__ import division
@@ -34,8 +22,6 @@ from vnpy.trader.vtFunction import todayDate, getJsonPath
 
 from .ctaBase import *
 from .strategy import STRATEGY_CLASS
-
-
 
 
 ########################################################################
@@ -267,6 +253,9 @@ class CtaEngine(object):
     def processTickEvent(self, event):
         """处理行情推送"""
         tick = event.dict_['data']
+        
+        tick = copy(tick)
+        
         # 收到tick行情后，先处理本地停止单（检查是否要立即发出）
         self.processStopOrder(tick)
         
@@ -471,24 +460,29 @@ class CtaEngine(object):
                     self.tickStrategyDict[vtSymbol] = l
                 l.append(strategy)
             
-            # 订阅合约
-            for vtSymbol in vtSymbols:
-                allContracts = self.mainEngine.getAllContracts()
-                for anyContract in allContracts:
-                    if vtSymbol in anyContract.symbol:
-                        contract = self.mainEngine.getContract(vtSymbol)
-                        if contract:
-                            req = VtSubscribeReq()
-                            req.symbol = contract.symbol
-                            req.exchange = contract.exchange
-                            
-                            # 对于IB接口订阅行情时所需的货币和产品类型，从策略属性中获取
-                            req.currency = strategy.currency
-                            req.productClass = strategy.productClass
-                            
-                            self.mainEngine.subscribe(req, contract.gatewayName)
-                        else:
-                            self.writeCtaLog(u'%s的交易合约%s无法找到' %(name, vtSymbol))
+
+    #----------------------------------------------------------------------
+    def subscribeMarketData(self, strategy):
+        """订阅行情"""
+        # 订阅合约
+        vtSymbols = strategy.vtSymbol.split(",")
+        for vtSymbol in vtSymbols:
+            allContracts = self.mainEngine.getAllContracts()
+            for anyContract in allContracts:
+                if vtSymbol in anyContract.symbol:
+                    contract = self.mainEngine.getContract(vtSymbol)
+                    if contract:
+                        req = VtSubscribeReq()
+                        req.symbol = contract.symbol
+                        req.exchange = contract.exchange
+                        
+                        # 对于IB接口订阅行情时所需的货币和产品类型，从策略属性中获取
+                        req.currency = strategy.currency
+                        req.productClass = strategy.productClass
+                        
+                        self.mainEngine.subscribe(req, contract.gatewayName)
+                    else:
+                        self.writeCtaLog(u'%s的交易合约%s无法找到' %(strategy.name, strategy.vtSymbol))
 
     #----------------------------------------------------------------------
     def initStrategy(self, name):
@@ -499,6 +493,8 @@ class CtaEngine(object):
             if not strategy.inited:
                 strategy.inited = True
                 self.callStrategyFunc(strategy, strategy.onInit)
+                self.loadSyncData(strategy)                             # 初始化完成后加载同步数据
+                self.subscribeMarketData(strategy)                      # 加载同步数据后再订阅行情
             else:
                 self.writeCtaLog(u'请勿重复初始化策略实例：%s' %name)
         else:
@@ -579,8 +575,6 @@ class CtaEngine(object):
             
             for setting in l:
                 self.loadStrategy(setting)
-                
-        self.loadSyncData()
     
     #----------------------------------------------------------------------
     def getStrategyVar(self, name):
@@ -611,12 +605,27 @@ class CtaEngine(object):
         else:
             self.writeCtaLog(u'策略实例不存在：' + name)    
             return None
+    
+    #----------------------------------------------------------------------
+    def getStrategyNames(self):
+        """查询所有策略名称"""
+        return self.strategyDict.keys()        
         
     #----------------------------------------------------------------------
     def putStrategyEvent(self, name):
         """触发策略状态变化事件（通常用于通知GUI更新）"""
+        strategy = self.strategyDict[name]
+        d = {k:strategy.__getattribute__(k) for k in strategy.varList}
+        
         event = Event(EVENT_CTA_STRATEGY+name)
+        event.dict_['data'] = d
         self.eventEngine.put(event)
+        
+        d2 = {k:str(v) for k,v in d.items()}
+        d2['name'] = name
+        event2 = Event(EVENT_CTA_STRATEGY)
+        event2.dict_['data'] = d2
+        self.eventEngine.put(event2)        
         
     #----------------------------------------------------------------------
     def callStrategyFunc(self, strategy, func, params=None):
@@ -653,21 +662,20 @@ class CtaEngine(object):
         self.writeCtaLog(content)
     
     #----------------------------------------------------------------------
-    def loadSyncData(self):
+    def loadSyncData(self, strategy):
         """从数据库载入策略的持仓情况"""
-        for strategy in self.strategyDict.values():
-            flt = {'name': strategy.name,
-                   'vtSymbol': strategy.vtSymbol}
-            syncData = self.mainEngine.dbQuery(POSITION_DB_NAME, strategy.className, flt)
-            
-            if not syncData:
-                continue
-            
-            d = syncData[0]
-            
-            for key in strategy.syncList:
-                if key in d:
-                    strategy.__setattr__(key, d[key])
+        flt = {'name': strategy.name,
+               'vtSymbol': strategy.vtSymbol}
+        syncData = self.mainEngine.dbQuery(POSITION_DB_NAME, strategy.className, flt)
+        
+        if not syncData:
+            return
+        
+        d = syncData[0]
+        
+        for key in strategy.syncList:
+            if key in d:
+                strategy.__setattr__(key, d[key])
                 
     #----------------------------------------------------------------------
     def roundToPriceTick(self, priceTick, price):

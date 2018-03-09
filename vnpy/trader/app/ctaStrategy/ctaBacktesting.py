@@ -923,6 +923,7 @@ class BacktestingEngine(object):
         d['profitLossRatio'] = profitLossRatio
         d['posList'] = posList
         d['tradeTimeList'] = tradeTimeList
+        d['resultList'] = resultList
         
         return d
         
@@ -1016,21 +1017,22 @@ class BacktestingEngine(object):
             self.output('setting: %s' %str(setting))
             self.initStrategy(strategyClass, setting)
             self.runBacktesting()
-            d = self.calculateBacktestingResult()
-            self.output(targetName)
+            df = self.calculateDailyResult()
+            df, d = self.calculateDailyStatistics(df)            
+
             try:
                 targetValue = d[targetName]
             except KeyError:
                 targetValue = 0
-            resultList.append(([str(setting)], targetValue))
+            resultList.append(([str(setting)], targetValue, d))
         
         # 显示结果
         resultList.sort(reverse=True, key=lambda result:result[1])
         self.output('-' * 30)
         self.output(u'优化结果：')
         for result in resultList:
-            self.output(u'%s: %s' %(result[0], result[1]))
-        return result
+            self.output(u'参数：%s，目标：%s' %(result[0], result[1]))    
+        return resultList
             
     #----------------------------------------------------------------------
     def runParallelOptimization(self, strategyClass, optimizationSetting):
@@ -1063,7 +1065,8 @@ class BacktestingEngine(object):
         self.output('-' * 30)
         self.output(u'优化结果：')
         for result in resultList:
-            self.output(u'%s: %s' %(result[0], result[1]))    
+            self.output(u'参数：%s，目标：%s' %(result[0], result[1]))    
+            
         return resultList
 
     #----------------------------------------------------------------------
@@ -1138,6 +1141,7 @@ class BacktestingEngine(object):
         df['return'] = (np.log(df['balance']) - np.log(df['balance'].shift(1))).fillna(0)
         df['highlevel'] = df['balance'].rolling(min_periods=1,window=len(df),center=False).max()
         df['drawdown'] = df['balance'] - df['highlevel']        
+        df['ddPercent'] = df['drawdown'] / df['highlevel'] * 100
         
         # 计算统计结果
         startDate = df.index[0]
@@ -1149,6 +1153,7 @@ class BacktestingEngine(object):
         
         endBalance = df['balance'].iloc[-1]
         maxDrawdown = df['drawdown'].min()
+        maxDdPercent = df['ddPercent'].min()
         
         totalNetPnl = df['netPnl'].sum()
         dailyNetPnl = totalNetPnl / totalDays
@@ -1166,6 +1171,7 @@ class BacktestingEngine(object):
         dailyTradeCount = totalTradeCount / totalDays
         
         totalReturn = (endBalance/self.capital - 1) * 100
+        annualizedReturn = totalReturn / totalDays * 240
         dailyReturn = df['return'].mean() * 100
         returnStd = df['return'].std() * 100
         
@@ -1183,6 +1189,7 @@ class BacktestingEngine(object):
             'lossDays': lossDays,
             'endBalance': endBalance,
             'maxDrawdown': maxDrawdown,
+            'maxDdPercent': maxDdPercent,
             'totalNetPnl': totalNetPnl,
             'dailyNetPnl': dailyNetPnl,
             'totalCommission': totalCommission,
@@ -1194,6 +1201,7 @@ class BacktestingEngine(object):
             'totalTradeCount': totalTradeCount,
             'dailyTradeCount': dailyTradeCount,
             'totalReturn': totalReturn,
+            'annualizedReturn': annualizedReturn,
             'dailyReturn': dailyReturn,
             'returnStd': returnStd,
             'sharpeRatio': sharpeRatio
@@ -1220,9 +1228,11 @@ class BacktestingEngine(object):
         self.output(u'起始资金：\t%s' % self.capital)
         self.output(u'结束资金：\t%s' % formatNumber(result['endBalance']))
     
-        self.output(u'总收益率：\t%s' % formatNumber(result['totalReturn']))
+        self.output(u'总收益率：\t%s%%' % formatNumber(result['totalReturn']))
+        self.output(u'年化收益：\t%s%%' % formatNumber(result['annualizedReturn']))
         self.output(u'总盈亏：\t%s' % formatNumber(result['totalNetPnl']))
-        self.output(u'最大回撤: \t%s' % formatNumber(result['maxDrawdown']))      
+        self.output(u'最大回撤: \t%s' % formatNumber(result['maxDrawdown']))   
+        self.output(u'百分比最大回撤: %s%%' % formatNumber(result['maxDdPercent']))   
         
         self.output(u'总手续费：\t%s' % formatNumber(result['totalCommission']))
         self.output(u'总滑点：\t%s' % formatNumber(result['totalSlippage']))
@@ -1458,5 +1468,5 @@ def optimize(strategyClass, setting, targetName,
         targetValue = d[targetName]
     except KeyError:
         targetValue = 0            
-    return (str(setting), targetValue)    
-    
+
+    return (str(setting), targetValue, d)    

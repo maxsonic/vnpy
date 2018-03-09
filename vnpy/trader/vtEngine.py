@@ -1,5 +1,7 @@
 # encoding: UTF-8
 
+from __future__ import division
+
 import os
 import shelve
 import logging
@@ -293,6 +295,21 @@ class MainEngine(object):
         return self.dataEngine.getAllOrders()
     
     #----------------------------------------------------------------------
+    def getAllTrades(self):
+        """查询所有成交"""
+        return self.dataEngine.getAllTrades()    
+    
+    #----------------------------------------------------------------------
+    def getAllAccounts(self):
+        """查询所有账户"""
+        return self.dataEngine.getAllAccounts()
+    
+    #----------------------------------------------------------------------
+    def getAllPositions(self):
+        """查询所有持仓"""
+        return self.dataEngine.getAllPositions()
+    
+    #----------------------------------------------------------------------
     def getAllPositionDetails(self):
         """查询本地持仓缓存细节"""
         return self.dataEngine.getAllPositionDetails()
@@ -352,7 +369,17 @@ class MainEngine(object):
     def convertOrderReq(self, req):
         """转换委托请求"""
         return self.dataEngine.convertOrderReq(req)
-        
+
+    #----------------------------------------------------------------------
+    def getLog(self):
+        """查询日志"""
+        return self.dataEngine.getLog()
+    
+    #----------------------------------------------------------------------
+    def getError(self):
+        """查询错误"""
+        return self.dataEngine.getError()
+    
 
 ########################################################################
 class DataEngine(object):
@@ -367,14 +394,15 @@ class DataEngine(object):
         """Constructor"""
         self.eventEngine = eventEngine
         
-        # 保存合约详细信息的字典
+        # 保存数据的字典和列表
         self.contractDict = {}
-        
-        # 保存委托数据的字典
         self.orderDict = {}
-        
-        # 保存活动委托数据的字典（即可撤销）
-        self.workingOrderDict = {}
+        self.workingOrderDict = {}  # 可撤销委托
+        self.tradeDict = {}
+        self.accountDict = {}
+        self.positionDict= {}
+        self.logList = []
+        self.errorList = []
         
         # 持仓细节相关
         self.detailDict = {}                                # vtSymbol:PositionDetail
@@ -393,6 +421,9 @@ class DataEngine(object):
         self.eventEngine.register(EVENT_ORDER, self.processOrderEvent)
         self.eventEngine.register(EVENT_TRADE, self.processTradeEvent)
         self.eventEngine.register(EVENT_POSITION, self.processPositionEvent)
+        self.eventEngine.register(EVENT_ACCOUNT, self.processAccountEvent)
+        self.eventEngine.register(EVENT_LOG, self.processLogEvent)
+        self.eventEngine.register(EVENT_ERROR, self.processErrorEvent)
     
     #----------------------------------------------------------------------
     def processContractEvent(self, event):
@@ -423,6 +454,8 @@ class DataEngine(object):
     def processTradeEvent(self, event):
         """处理成交事件"""
         trade = event.dict_['data']
+        
+        self.tradeDict[trade.vtTradeID] = trade
     
         # 更新到持仓细节中
         detail = self.getPositionDetail(trade.vtSymbol)
@@ -432,11 +465,31 @@ class DataEngine(object):
     def processPositionEvent(self, event):
         """处理持仓事件"""
         pos = event.dict_['data']
+        
+        self.positionDict[pos.vtPositionName] = pos
     
         # 更新到持仓细节中
         detail = self.getPositionDetail(pos.vtSymbol)
         detail.updatePosition(pos)                
         
+    #----------------------------------------------------------------------
+    def processAccountEvent(self, event):
+        """处理账户事件"""
+        account = event.dict_['data']
+        self.accountDict[account.vtAccountID] = account
+    
+    #----------------------------------------------------------------------
+    def processLogEvent(self, event):
+        """处理日志事件"""
+        log = event.dict_['data']
+        self.logList.append(log)
+    
+    #----------------------------------------------------------------------
+    def processErrorEvent(self, event):
+        """处理错误事件"""
+        error = event.dict_['data']
+        self.errorList.append(error)
+    
     #----------------------------------------------------------------------
     def getContract(self, vtSymbol):
         """查询合约对象"""
@@ -486,12 +539,28 @@ class DataEngine(object):
         return self.orderDict.values()
     
     #----------------------------------------------------------------------
+    def getAllTrades(self):
+        """获取所有成交"""
+        return self.tradeDict.values()
+    
+    #----------------------------------------------------------------------
+    def getAllPositions(self):
+        """获取所有持仓"""
+        return self.positionDict.values()
+    
+    #----------------------------------------------------------------------
+    def getAllAccounts(self):
+        """获取所有资金"""
+        return self.accountDict.values()
+    
+    #----------------------------------------------------------------------
     def getPositionDetail(self, vtSymbol):
         """查询持仓细节"""
         if vtSymbol in self.detailDict:
             detail = self.detailDict[vtSymbol]
         else:
-            detail = PositionDetail(vtSymbol)
+            contract = self.getContract(vtSymbol)
+            detail = PositionDetail(vtSymbol, contract)
             self.detailDict[vtSymbol] = detail
             
             # 设置持仓细节的委托转换模式
@@ -532,11 +601,24 @@ class DataEngine(object):
             return [req]
         else:
             return detail.convertOrderReq(req)
-        
-        
-########################################################################
+
+    #----------------------------------------------------------------------
+    def getLog(self):
+        """获取日志"""
+        return self.logList
+    
+    #----------------------------------------------------------------------
+    def getError(self):
+        """获取错误"""
+        return self.errorList
+    
+
+########################################################################    
 class LogEngine(object):
     """日志引擎"""
+    
+    # 单例模式
+    __metaclass__ = VtSingleton
     
     # 日志级别
     LEVEL_DEBUG = logging.DEBUG
@@ -544,16 +626,6 @@ class LogEngine(object):
     LEVEL_WARN = logging.WARN
     LEVEL_ERROR = logging.ERROR
     LEVEL_CRITICAL = logging.CRITICAL
-    
-    # 单例对象
-    instance = None
-    
-    #----------------------------------------------------------------------
-    def __new__(cls, *args, **kwargs):
-        """创建对象，保证单例"""
-        if not cls.instance:
-            cls.instance = super(LogEngine, cls).__new__(cls, *args, **kwargs)
-        return cls.instance
 
     #----------------------------------------------------------------------
     def __init__(self):
@@ -642,7 +714,7 @@ class LogEngine(object):
         function = self.levelFunctionDict[log.logLevel]     # 获取日志级别对应的处理函数
         msg = '\t'.join([log.gatewayName, log.logContent])
         function(msg)
-    
+        
     
 ########################################################################
 class PositionDetail(object):
@@ -654,9 +726,19 @@ class PositionDetail(object):
     MODE_TDPENALTY = 'tdpenalty'    # 平今惩罚
 
     #----------------------------------------------------------------------
-    def __init__(self, vtSymbol):
+    def __init__(self, vtSymbol, contract=None):
         """Constructor"""
         self.vtSymbol = vtSymbol
+        self.symbol = EMPTY_STRING
+        self.exchange = EMPTY_STRING
+        self.name = EMPTY_UNICODE    
+        self.size = 1
+        
+        if contract:
+            self.symbol = contract.symbol
+            self.exchange = contract.exchange
+            self.name = contract.name
+            self.size = contract.size
         
         self.longPos = EMPTY_INT
         self.longYd = EMPTY_INT
@@ -664,6 +746,8 @@ class PositionDetail(object):
         self.longPosFrozen = EMPTY_INT
         self.longYdFrozen = EMPTY_INT
         self.longTdFrozen = EMPTY_INT
+        self.longPnl = EMPTY_FLOAT
+        self.longPrice = EMPTY_FLOAT
         
         self.shortPos = EMPTY_INT
         self.shortYd = EMPTY_INT
@@ -671,6 +755,10 @@ class PositionDetail(object):
         self.shortPosFrozen = EMPTY_INT
         self.shortYdFrozen = EMPTY_INT
         self.shortTdFrozen = EMPTY_INT
+        self.shortPnl = EMPTY_FLOAT
+        self.shortPrice = EMPTY_FLOAT
+        
+        self.lastPrice = EMPTY_FLOAT
         
         self.mode = self.MODE_NORMAL
         self.exchange = EMPTY_STRING
@@ -727,8 +815,10 @@ class PositionDetail(object):
                         self.longYd += self.longTd
                         self.longTd = 0
                     
-        # 汇总今昨
+        # 汇总
+        self.calculatePrice(trade)
         self.calculatePosition()
+        self.calculatePnl()
     
     #----------------------------------------------------------------------
     def updateOrder(self, order):
@@ -752,10 +842,14 @@ class PositionDetail(object):
             self.longPos = pos.position
             self.longYd = pos.ydPosition
             self.longTd = self.longPos - self.longYd
+            self.longPnl = pos.positionProfit
+            self.longPrice = pos.price
         elif pos.direction is DIRECTION_SHORT:
             self.shortPos = pos.position
             self.shortYd = pos.ydPosition
             self.shortTd = self.shortPos - self.shortYd
+            self.shortPnl = pos.positionProfit
+            self.shortPrice = pos.price
             
         #self.output()
     
@@ -779,14 +873,46 @@ class PositionDetail(object):
         
         # 计算冻结量
         self.calculateFrozen()
+        
+    #----------------------------------------------------------------------
+    def updateTick(self, tick):
+        """行情更新"""
+        self.lastPrice = tick.lastPrice
+        self.calculatePnl()
+        
+    #----------------------------------------------------------------------
+    def calculatePnl(self):
+        """计算持仓盈亏"""
+        self.longPnl = self.longPos * (self.lastPrice - self.longPrice) * self.size
+        self.shortPnl = self.shortPos * (self.shortPrice - self.lastPrice) * self.size
+        
+    #----------------------------------------------------------------------
+    def calculatePrice(self, trade):
+        """计算持仓均价（基于成交数据）"""
+        # 只有开仓会影响持仓均价
+        if trade.offset == OFFSET_OPEN:
+            if trade.direction == DIRECTION_LONG:
+                cost = self.longPrice * self.longPos
+                cost += trade.volume * trade.price
+                newPos = self.longPos + trade.volume
+                if newPos:
+                    self.longPrice = cost / newPos
+                else:
+                    self.longPrice = 0
+            else:
+                cost = self.shortPrice * self.shortPos
+                cost += trade.volume * trade.price
+                newPos = self.shortPos + trade.volume
+                if newPos:
+                    self.shortPrice = cost / newPos
+                else:
+                    self.shortPrice = 0
     
     #----------------------------------------------------------------------
     def calculatePosition(self):
         """计算持仓情况"""
         self.longPos = self.longTd + self.longYd
         self.shortPos = self.shortTd + self.shortYd      
-        
-        #self.output()
         
     #----------------------------------------------------------------------
     def calculateFrozen(self):
@@ -838,8 +964,6 @@ class PositionDetail(object):
             # 汇总今昨冻结
             self.longPosFrozen = self.longYdFrozen + self.longTdFrozen
             self.shortPosFrozen = self.shortYdFrozen + self.shortTdFrozen
-        
-        #self.output()
             
     #----------------------------------------------------------------------
     def output(self):
@@ -929,9 +1053,9 @@ class PositionDetail(object):
                 if ydAvailable > 0:
                     reqClose = copy(req)
                     if self.exchange is EXCHANGE_SHFE:
-                        req.offset = OFFSET_CLOSEYESTERDAY
+                        reqClose.offset = OFFSET_CLOSEYESTERDAY
                     else:
-                        req.offset = OFFSET_CLOSE
+                        reqClose.offset = OFFSET_CLOSE
                     reqClose.volume = ydAvailable
                     
                     l.append(reqClose)

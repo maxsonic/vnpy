@@ -44,7 +44,7 @@ workingPath = os.getcwd()
 for root, subdirs, files in os.walk(workingPath):
     for name in files:
         # 只有文件名中包含strategy且非.pyc的文件，才是策略文件
-        if 'strategy' in name and '.pyc' not in name:
+        if 'strategy' in name and '.pyc' not in name and name[-3:] == ".py":
             # 模块名称无需前缀
             moduleName = name.replace('.py', '')
             loadStrategyModule(moduleName)
