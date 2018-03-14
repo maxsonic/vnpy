@@ -1,7 +1,12 @@
 # encoding: UTF-8
 
 # 系统模块
-from queue import Queue, Empty
+try:
+    from queue import Queue, Empty
+except ImportError:
+    import Queue as queue
+    Queue = queue.Queue
+    Empty = queue.Empty
 from threading import Thread
 from time import sleep
 from collections import defaultdict

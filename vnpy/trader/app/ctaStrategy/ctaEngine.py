@@ -470,7 +470,7 @@ class CtaEngine(object):
             allContracts = self.mainEngine.getAllContracts()
             for anyContract in allContracts:
                 if vtSymbol in anyContract.symbol:
-                    contract = self.mainEngine.getContract(vtSymbol)
+                    contract = self.mainEngine.getContract(anyContract.symbol)
                     if contract:
                         req = VtSubscribeReq()
                         req.symbol = contract.symbol
