@@ -253,6 +253,8 @@ class CtaEngine(object):
     def processTickEvent(self, event):
         """处理行情推送"""
         tick = event.dict_['data']
+        if tick.volume == 0 or tick.openInterest == 0:
+            return
         
         tick = copy(tick)
         
@@ -260,7 +262,8 @@ class CtaEngine(object):
         self.processStopOrder(tick)
         
         # 推送tick到对应的策略实例进行处理
-        if tick.vtSymbol in self.tickStrategyDict:
+        s = tick.vtSymbol[:-4]
+        if s in self.tickStrategyDict or tick.vtSymbol in self.tickStrategyDict:
             # tick时间可能出现异常数据，使用try...except实现捕捉和过滤
             try:
                 # 添加datetime字段
@@ -271,7 +274,8 @@ class CtaEngine(object):
                 return
                 
             # 逐个推送到策略实例中
-            l = self.tickStrategyDict[tick.vtSymbol]
+            l = self.tickStrategyDict.get(s)
+            l = l if l is not None else self.tickStrategyDict.get(tick.vtSymbol)
             for strategy in l:
                 self.callStrategyFunc(strategy, strategy.onTick, tick)
     
