@@ -338,6 +338,7 @@ class CtaEngine(object):
     def loadBar(self, dbName, symbolMap, days):
         """从数据库中读取Bar数据，startDate是datetime对象"""
         startDate = self.today - timedelta(days)
+        self.writeCtaLog("load bar data for %s" % symbolMap)
         
         d = {'datetime':{'$gte':startDate}}
         targetSymbols = []
@@ -347,6 +348,8 @@ class CtaEngine(object):
 
             barData = self.mainEngine.dbQuery(dbName, historySymbol,
                                               d, 'datetime')
+            
+            self.writeCtaLog("prepare bar data for %s" % targetSymbol)
             initCursors[targetSymbol] = barData
 
         l = []
@@ -357,8 +360,6 @@ class CtaEngine(object):
             stopLevel = len(targetSymbols)
             for symbol in targetSymbols:
                 # check whether alive
-                dir(initCursors[symbol])
-                type(initCursors[symbol])
                 if not initCursors[symbol]:
                     stopCount = stopCount + 1
                     if stopCount == stopLevel:
@@ -398,8 +399,7 @@ class CtaEngine(object):
                     elif data.datetime < minDateTime:
                         del tmpDataDict[symbol]
                 l.append(dataDict)
-            
-            return l
+        return l
     
     #----------------------------------------------------------------------
     def loadTick(self, dbName, collectionName, days):
@@ -473,6 +473,7 @@ class CtaEngine(object):
         for vtSymbol in vtSymbols:
             allContracts = self.mainEngine.getAllContracts()
             for anyContract in allContracts:
+                # self.writeCtaLog("our symbol %s, server symbol %s" % (vtSymbol, anyContract.symbol))
                 if vtSymbol in anyContract.symbol:
                     contract = self.mainEngine.getContract(anyContract.symbol)
                     if contract:
