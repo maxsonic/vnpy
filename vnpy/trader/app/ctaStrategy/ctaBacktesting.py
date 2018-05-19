@@ -235,7 +235,7 @@ class BacktestingEngine(object):
                 try:
                     d = initCursors[symbol].next()
                 except StopIteration:
-                    break
+                    continue
                 data = dataClass()
                 data.__dict__ = d
                 tmpDataDict[symbol] = data
@@ -280,9 +280,9 @@ class BacktestingEngine(object):
 
         # self.dbCursor = collection.find(flt).sort('datetime')
         
-        self.output(u'载入完成，数据量：%s' %(sum([initCursor.count() 
+        self.output(u'载入完成，数据量init：%s, after: %s' %(sum([initCursor.count() 
                                               for _, initCursor 
-                                              in initCursors.items()]) + 
+                                              in initCursors.items()]),
                                               sum([dbCursor.count() 
                                                for _, dbCursor
                                                in self.dbCursor.items()])))
@@ -337,7 +337,7 @@ class BacktestingEngine(object):
                 try:
                     d = self.dbCursor[symbol].next()
                 except StopIteration:
-                    break
+                    continue
                 data = dataClass()
                 data.__dict__ = d
                 tmpDataDict[symbol] = data
@@ -407,6 +407,7 @@ class BacktestingEngine(object):
         setting是策略的参数设置，如果使用类中写好的默认设置则可以不传该参数
         """
         self.strategy = strategyClass(self, setting)
+        self.strategy.pos = dict()
         self.strategy.name = self.strategy.className
     
     #----------------------------------------------------------------------
@@ -1058,9 +1059,15 @@ class BacktestingEngine(object):
                                                  self.rateFunc, self.capital)))
         pool.close()
         pool.join()
-        
+
+        resultList = []
         # 显示结果
-        resultList = [res.get() for res in l]
+        for res in l:
+            try:
+                resultList.append(res.get())
+            except Exception as e:
+                print str(e)
+
         resultList.sort(reverse=True, key=lambda result:result[1])
         self.output('-' * 30)
         self.output(u'优化结果：')
@@ -1464,9 +1471,12 @@ def optimize(strategyClass, setting, targetName,
     engine.setSize(size)
     engine.setPriceTick(priceTick)
     engine.setDatabase(dbName, symbol)
-    
-    engine.initStrategy(strategyClass, setting)
-    engine.runBacktesting()
+    try: 
+        engine.initStrategy(strategyClass, setting)
+        engine.runBacktesting()
+    except:
+        print setting
+        raise
     
     df = engine.calculateDailyResult()
     df, d = engine.calculateDailyStatistics(df)
