@@ -6,6 +6,7 @@
 
 from __future__ import division
 
+from pymongo import DESCENDING
 import json
 import os
 import traceback
@@ -347,7 +348,7 @@ class CtaEngine(object):
             targetSymbols.append(targetSymbol)
 
             barData = self.mainEngine.dbQuery(dbName, historySymbol,
-                                              d, 'datetime')
+                                              d, 'datetime', DESCENDING)
             
             self.writeCtaLog("prepare bar data for %s" % targetSymbol)
             initCursors[targetSymbol] = barData
@@ -372,7 +373,7 @@ class CtaEngine(object):
                 try:
                     d = initCursors[symbol].pop()
                 except StopIteration:
-                    break
+                    continue
                 data = VtBarData()
                 data.__dict__ = d
                 data.vtSymbol = symbol 
@@ -385,19 +386,21 @@ class CtaEngine(object):
 
             tmpDataDateTimeList.sort()
             minDateTime = tmpDataDateTimeList[0]
-            
 
             if len(set(tmpDataDateTimeList)) == 1:
                 l.append(tmpDataDict.copy())      
                 tmpDataDict = {}
             else:
                 dataDict = {}
+                toDelSymbol = {}
                 for symbol, data in tmpDataDict.items():
-                    if data.datetime == minDateTime:
+                    if (data.datetime - minDateTime) == timedelta(0):
                         dataDict[symbol] = data
-                        del tmpDataDict[symbol]
+                        toDelSymbol[symbol] = True
                     elif data.datetime < minDateTime:
-                        del tmpDataDict[symbol]
+                        toDelSymbol[symbol] = True
+                for key in toDelSymbol.keys():
+                    del tmpDataDict[key]
                 l.append(dataDict)
         return l
     
