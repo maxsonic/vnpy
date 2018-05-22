@@ -34,7 +34,7 @@ class CtaTemplate(object):
     # 策略的基本变量，由引擎管理
     inited = False                 # 是否进行了初始化
     trading = False                # 是否启动交易，由引擎管理
-    pos =  dict()                       # 持仓情况
+    pos = EMPTY_INT                      # 持仓情况
     
     # 参数列表，保存了参数的名称
     paramList = ['name',
@@ -54,6 +54,7 @@ class CtaTemplate(object):
     def __init__(self, ctaEngine, setting):
         """Constructor"""
         self.ctaEngine = ctaEngine
+        self.pos = dict()
 
         # 设置策略的参数
         if setting:
