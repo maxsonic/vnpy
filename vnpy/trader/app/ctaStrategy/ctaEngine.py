@@ -221,7 +221,9 @@ class CtaEngine(object):
         vtSymbol = tick.vtSymbol
         
         # 首先检查是否有策略交易该合约
-        if vtSymbol in self.tickStrategyDict:
+        s = tick.vtSymbol[:-4]
+        if s in self.tickStrategyDict or vtSymbol in self.tickStrategyDict:
+        #if vtSymbol in self.tickStrategyDict:
             # 遍历等待中的停止单，检查是否会被触发
             for so in self.workingStopOrderDict.values():
                 if so.vtSymbol == vtSymbol:
@@ -292,6 +294,7 @@ class CtaEngine(object):
             
             # 如果委托已经完成（拒单、撤销、全成），则从活动委托集合中移除
             if order.status in self.STATUS_FINISHED:
+                self.writeCtaLog("order id %s %s, OrderedDictkey %s  %s" % (order.vtOrderID, order.vtSymbol, self.orderStrategyDict.keys(), self.orderStrategyDict))
                 s = self.strategyOrderDict[strategy.name]
                 if vtOrderID in s:
                     s.remove(vtOrderID)
@@ -310,6 +313,7 @@ class CtaEngine(object):
         
         # 将成交推送到策略对象中
         if trade.vtOrderID in self.orderStrategyDict:
+            self.writeCtaLog("order id %s %s, OrderedDictkey %s  %s" % (trade.vtOrderID, trade.vtSymbol, self.orderStrategyDict.keys(), self.orderStrategyDict))
             strategy = self.orderStrategyDict[trade.vtOrderID]
             
             # 计算策略持仓
@@ -459,6 +463,9 @@ class CtaEngine(object):
             
             # 保存Tick映射关系
             vtSymbols = strategy.vtSymbol.split(",")
+            self.writeCtaLog("sonic vtSymbols: %s name: %s" % (vtSymbols, name))
+            self.writeCtaLog("sonic strategyDict: %s " % (self.strategyDict))
+            self.writeCtaLog("sonic strategyOrderDict: %s " % (self.strategyOrderDict))
             for vtSymbol in vtSymbols:
                 if vtSymbol in self.tickStrategyDict:
                     l = self.tickStrategyDict[vtSymbol]

@@ -11,6 +11,7 @@ from collections import OrderedDict
 from itertools import product
 import multiprocessing
 import copy
+import math
 
 import pymongo
 import pandas as pd
@@ -1186,6 +1187,18 @@ class BacktestingEngine(object):
         
         totalReturn = (endBalance/self.capital - 1) * 100
         annualizedReturn = totalReturn / totalDays * 240
+
+        meanReturnForKelly = df['return'].mean() * 240  
+        stdReturnForKelly = df['return'].std() * math.sqrt(240) 
+        meanExcessReturnForKelly = meanReturnForKelly - 0.04
+        sharpeRatioExcessKelly = meanExcessReturnForKelly / stdReturnForKelly
+        sharpeRatioKelly = meanReturnForKelly / stdReturnForKelly
+        kellyExcessF = meanExcessReturnForKelly / (stdReturnForKelly * stdReturnForKelly) 
+        kellyF = meanReturnForKelly / (stdReturnForKelly * stdReturnForKelly) 
+        compoundedExcessLeveredRetrun = 0.04 + sharpeRatioExcessKelly*2 / 2
+        compoundedLeveredRetrun = 0.04 + sharpeRatioKelly*2 / 2
+        compoundedReturn = meanReturnForKelly - stdReturnForKelly*2 /2
+
         dailyReturn = df['return'].mean() * 100
         returnStd = df['return'].std() * 100
         
@@ -1218,7 +1231,18 @@ class BacktestingEngine(object):
             'annualizedReturn': annualizedReturn,
             'dailyReturn': dailyReturn,
             'returnStd': returnStd,
-            'sharpeRatio': sharpeRatio
+            'sharpeRatio': sharpeRatio,
+            'meanReturnForKelly': meanReturnForKelly,
+            'stdReturnForKelly': stdReturnForKelly,
+            'meanExcessReturnForKelly': meanExcessReturnForKelly,
+            'sharpeRatioExcessKelly': sharpeRatioExcessKelly,  
+            'sharpeRatioKelly': sharpeRatioKelly,
+            'kellyExcessF': kellyExcessF,
+            'kellyF': kellyF,
+            'compoundedExcessLeveredRetrun': compoundedExcessLeveredRetrun,
+            'compoundedLeveredRetrun': compoundedLeveredRetrun,
+            'compoundedReturn': compoundedReturn
+
         }
         
         return df, result
@@ -1262,6 +1286,17 @@ class BacktestingEngine(object):
         self.output(u'日均收益率：\t%s%%' % formatNumber(result['dailyReturn']))
         self.output(u'收益标准差：\t%s%%' % formatNumber(result['returnStd']))
         self.output(u'Sharpe Ratio：\t%s' % formatNumber(result['sharpeRatio']))
+
+        self.output(u'Kelly Annual Mean Return：\t%s%%' % formatNumber(result['meanReturnForKelly']*100))
+        self.output(u'Kelly STD Return：\t%s%%' % formatNumber(result['stdReturnForKelly']*100))
+        self.output(u'Kelly Mean Excess Return：\t%s%%' % formatNumber(result['meanExcessReturnForKelly']*100))
+        self.output(u'Kelly Excess SharpeRatio：\t%s' % formatNumber(result['sharpeRatioExcessKelly']))
+        self.output(u'Kelly SharpeRatio：\t%s' % formatNumber(result['sharpeRatioKelly']))
+        self.output(u'Kelly Leverage on excess return ：\t%s' % formatNumber(result['kellyExcessF']))
+        self.output(u'Kelly Leverage on return ：\t%s' % formatNumber(result['kellyF']))
+        self.output(u'Kelly Compounded Levered on excess return ：\t%s%%' % formatNumber(result['compoundedExcessLeveredRetrun']*100))
+        self.output(u'Kelly Compounded Levered return ：\t%s%%' % formatNumber(result['compoundedLeveredRetrun']*100))
+        self.output(u'Kelly Compounded NO Levered return ：\t%s%%' % formatNumber(result['compoundedReturn']*100))
         
         # 绘图
         fig = plt.figure(figsize=(10, 16))
