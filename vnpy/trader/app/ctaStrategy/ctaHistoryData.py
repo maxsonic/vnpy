@@ -117,8 +117,13 @@ def loadRQCsv(fileName, dbName, symbol):
     client = pymongo.MongoClient(globalSetting['mongoHost'], globalSetting['mongoPort']) 
     collection = client[dbName][symbol]
     collection.ensure_index([('datetime', pymongo.ASCENDING)], unique=True)   
-    
+
+    print u'Start - clear the old collection'
+    result = collection.delete_many({})
+    print u'End - clear the old collection, %s deleted' % result.deleted_count
+
     # 读取数据和插入到数据库
+    data_list = []
     reader = csv.DictReader(file(fileName, 'r'))
     for d in reader:
         bar = VtBarData()
@@ -134,11 +139,13 @@ def loadRQCsv(fileName, dbName, symbol):
         bar.volume = d['Volume']
         bar.openInterest = d['open_interest']
 
-        flt = {'datetime': bar.datetime}
-        collection.update_one(flt, {'$set':bar.__dict__}, upsert=True)  
-        print bar.date, bar.time
-    
-    print u'插入完毕，耗时：%s' % (time()-start)
+        data_list.append(bar.__dict__)
+        # flt = {'datetime': bar.datetime}
+        # collection.update_one(flt, {'$set':bar.__dict__}, upsert=True)
+        # print bar.date, bar.time
+    result = collection.insert_many(data_list)
+    print u'插入完毕，耗时：%s, total: %s' % ((time()-start), len(result.inserted_ids))
+    # print u'插入完毕，耗时：%s' % (time()-start)
 
 #----------------------------------------------------------------------
 def loadTbCsv(fileName, dbName, symbol):
