@@ -5,7 +5,10 @@ import traceback
 
 from vnpy.trader.vtFunction import loadIconPath
 from vnpy.trader.vtGlobal import globalSetting
+from vnpy.trader.app import ctaStrategy
 from vnpy.trader.uiBasicWidget import *
+from datetime import datetime, time
+import time as time2
 
 
 ########################################################################
@@ -21,6 +24,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.mainEngine = mainEngine
         self.eventEngine = eventEngine
+        self.connected = False
+        self.recording = False
         
         l = self.mainEngine.getAllGatewayDetails()
         self.gatewayNameList = [d['gatewayName'] for d in l]        
@@ -152,6 +157,46 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.sbCount == self.sbTrigger:
             self.sbCount = 0
             self.statusLabel.setText(self.getCpuMemory())
+
+        # if dt.hour == 20  or dt.hour == 8:
+        #     if dt.minute == 58  and dt.second == 0:
+        
+        DAY_START = time(8, 45)         # 日盘启动和停止时间
+        DAY_END = time(16, 30)
+        
+        NIGHT_START = time(20, 45)      # 夜盘启动和停止时间
+        NIGHT_END = time(2, 45)
+
+
+        currentTime = datetime.now().time()
+        
+        
+        # 判断当前处于的时间段
+        if ((currentTime >= DAY_START and currentTime <= DAY_END) or
+            (currentTime >= NIGHT_START) or
+            (currentTime <= NIGHT_END)):
+            self.recording = True
+        
+        # 记录时间则需要启动子进程
+        if self.recording and not self.connected:
+            self.mainEngine.connect("CTP")
+            # time2.sleep(10)
+            # ca = self.mainEngine.getApp(ctaStrategy.appName)
+            # ca.loadSetting()
+            # ca.initAll()
+            # ca.startAll()
+            self.connected = True
+            # print "sonic connected done"
+
+            
+        # 非记录时间则退出子进程
+        if not self.recording and self.connected:
+            self.gatewayDict["CTP"].disconnect()
+            # ca = self.mainEngine.getApp(ctaStrategy.appName)
+            # ca.stopAll()
+            # print "sonic disconnected done"
+            self.connected = False
+
     
     #----------------------------------------------------------------------
     def getCpuMemory(self):
