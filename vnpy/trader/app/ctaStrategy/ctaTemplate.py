@@ -5,6 +5,7 @@
 '''
 
 import numpy as np
+import pandas as pd
 import talib
 
 from vnpy.trader.vtConstant import *
@@ -606,6 +607,44 @@ class ArrayManager(object):
         down = mid - std * dev
         
         return up, down    
+
+    #----------------------------------------------------------------------
+    def new_boll(self, n, dev, array=False):
+        """布林通道"""
+        mid = self.sma(n, array)
+        std = self.std(n, array)
+        
+        up = mid + std * dev
+        b1 = 4 * std / mid
+        b2 = (self.close[-1] - mid + 2 * std) / (4 * std)
+        down = mid - std * dev
+        
+        return up, down, b1, b2   
+    
+    def trix(self, n, array=False):
+        trix = talib.TRIX(self.close, timeperiod=n)
+        return trix[-1]
+
+    def roc(self, n, array=False):
+        roc = talib.ROC(self.close, timeperiod=n)
+        return roc[-1]
+
+    def stochastic_oscillator(self, n, array=False):
+        """Calculate stochastic oscillator %D for given data.
+        :param df: pandas.DataFrame
+        :param n: 
+        :return: pandas.DataFrame
+        """
+        df = pd.DataFrame()
+        df['Close'] = pd.Series(self.close)
+        df['Low'] = pd.Series(self.low)
+        df['High'] = pd.Series(self.high)
+        SOk = pd.Series((df['Close'] - df['Low']) / (df['High'] - df['Low']),
+                         name='SOk')
+        SOd = pd.Series(SOk.ewm(span=n, min_periods=n).mean(), name='SOd')
+        df = df.join(SOd)
+        df = df.join(SOk)
+        return df['SOk'].values[-1], df['SOd'].values[-1]
     
     #----------------------------------------------------------------------
     def keltner(self, n, dev, array=False):
