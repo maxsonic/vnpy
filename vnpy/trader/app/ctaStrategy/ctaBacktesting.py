@@ -930,7 +930,7 @@ class BacktestingEngine(object):
         return d
         
     #----------------------------------------------------------------------
-    def showBacktestingResult(self):
+    def showBacktestingResult(self, pdffile=None):
         """显示回测结果"""
         d = self.calculateBacktestingResult()
         
@@ -979,8 +979,37 @@ class BacktestingEngine(object):
         plt.sca(pPos)
         plt.tight_layout()
         plt.xticks(xindex, tradeTimeIndex, rotation=30)  # 旋转15
+
+        if pdffile is None:        
+            plt.show()
+        else:
+            txt = ""
+            txt = txt + '-' * 30
+            txt = txt + '\n' + u'first trade: %s' % d['timeList'][0]
+            txt = txt + '\n' + u'last trade: %s' % d['timeList'][-1]
         
-        plt.show()
+            txt = txt + '\n' + u'total trades: %s' % formatNumber(d['totalResult'])        
+            txt = txt + '\n' + u'capital: %s' % formatNumber(d['capital'])
+            txt = txt + '\n' + u'max drawdown: %s' % formatNumber(min(d['drawdownList']))
+        
+            txt = txt + '\n' + u'average profit each trade: %s' %formatNumber(d['capital']/d['totalResult'])
+            txt = txt + '\n' + u'average slippage each trade: %s' %formatNumber(d['totalSlippage']/d['totalResult'])
+            txt = txt + '\n' + u'average commision each trade: %s' %formatNumber(d['totalCommission']/d['totalResult'])
+        
+            txt = txt + '\n' + u'winning rate: %s%%' %formatNumber(d['winningRate'])
+            txt = txt + '\n' + u'average winning: %s' %formatNumber(d['averageWinning'])
+            txt = txt + '\n' + u'average losing: %s' %formatNumber(d['averageLosing'])
+            txt = txt + '\n' + u'profit lost ratio: %s' %formatNumber(d['profitLossRatio'])
+            pdffile.savefig(fig)
+
+            plt.clf()
+
+            secondPage = plt.figure(figsize=(10, 16))
+            secondPage.text(0.05,0.7, txt, transform=secondPage.transFigure, size=14, ha="left")
+            pdffile.savefig(secondPage)
+            secondPage.clf()
+
+            pdffile.close()
         return d
     
     #----------------------------------------------------------------------
@@ -1248,7 +1277,7 @@ class BacktestingEngine(object):
         return df, result
     
     #----------------------------------------------------------------------
-    def showDailyResult(self, df=None, result=None):
+    def showDailyResult(self, df=None, result=None, savefig_path=None):
         """显示按日统计的交易结果"""
         if df is None:
             df = self.calculateDailyResult()
@@ -1316,9 +1345,67 @@ class BacktestingEngine(object):
         pKDE = plt.subplot(4, 1, 4)
         pKDE.set_title('Daily Pnl Distribution')
         df['netPnl'].hist(bins=50)
+
+        if savefig_path is None:  
+            plt.show()
+        else:
+            from matplotlib.backends.backend_pdf import PdfPages
+            txt = ""
+            txt = txt + '-' * 30
+            txt = txt + '\n' + u'start date: %s' % result['startDate']
+            txt = txt + '\n' + u'end date: %s' % result['endDate']
         
-        plt.show()
-        return df, result
+            txt = txt + '\n' + u'total trade days: %s' % result['totalDays']
+            txt = txt + '\n' + u'profit days: %s' % result['profitDays']
+            txt = txt + '\n' + u'loss days: %s' % result['lossDays']
+        
+            txt = txt + '\n' + u'start capital: %s' % self.capital
+            txt = txt + '\n' + u'end balance: %s' % formatNumber(result['endBalance'])
+    
+            txt = txt + '\n' + u'total retrun: %s%%' % formatNumber(result['totalReturn'])
+            txt = txt + '\n' + u'annualize return: %s%%' % formatNumber(result['annualizedReturn'])
+            txt = txt + '\n' + u'total net pnl: %s' % formatNumber(result['totalNetPnl'])
+            txt = txt + '\n' + u'max drawdown: %s' % formatNumber(result['maxDrawdown'])   
+            txt = txt + '\n' + u'max drawdown percent: %s%%' % formatNumber(result['maxDdPercent'])   
+        
+            txt = txt + '\n' + u'total commision: %s' % formatNumber(result['totalCommission'])
+            txt = txt + '\n' + u'total slippage: %s' % formatNumber(result['totalSlippage'])
+            txt = txt + '\n' + u'total turnover: %s' % formatNumber(result['totalTurnover'])
+            txt = txt + '\n' + u'total trade count: %s' % formatNumber(result['totalTradeCount'])
+        
+            txt = txt + '\n' + u'daily net pnl: %s' % formatNumber(result['dailyNetPnl'])
+            txt = txt + '\n' + u'dayly commission: %s' % formatNumber(result['dailyCommission'])
+            txt = txt + '\n' + u'daily slippage: %s' % formatNumber(result['dailySlippage'])
+            txt = txt + '\n' + u'daily turnover: %s' % formatNumber(result['dailyTurnover'])
+            txt = txt + '\n' + u'daily trade count: %s' % formatNumber(result['dailyTradeCount'])
+        
+            txt = txt + '\n' + u'daily return: %s%%' % formatNumber(result['dailyReturn'])
+            txt = txt + '\n' + u'return std: %s%%' % formatNumber(result['returnStd'])
+            txt = txt + '\n' + u'Sharpe Ratio: %s' % formatNumber(result['sharpeRatio'])
+
+            txt = txt + '\n' + u'Kelly Annual Mean Return: %s%%' % formatNumber(result['meanReturnForKelly']*100)
+            txt = txt + '\n' + u'Kelly STD Return: %s%%' % formatNumber(result['stdReturnForKelly']*100)
+            txt = txt + '\n' + u'Kelly Mean Excess Return: %s%%' % formatNumber(result['meanExcessReturnForKelly']*100)
+            txt = txt + '\n' + u'Kelly Excess SharpeRatio: %s' % formatNumber(result['sharpeRatioExcessKelly'])
+            txt = txt + '\n' + u'Kelly SharpeRatio: %s' % formatNumber(result['sharpeRatioKelly'])
+            txt = txt + '\n' + u'Kelly Leverage on excess return: %s' % formatNumber(result['kellyExcessF'])
+            txt = txt + '\n' + u'Kelly Leverage on return: %s' % formatNumber(result['kellyF'])
+            txt = txt + '\n' + u'Kelly Compounded Levered on excess return: %s%%' % formatNumber(result['compoundedExcessLeveredRetrun']*100)
+            txt = txt + '\n' + u'Kelly Compounded Levered return: %s%%' % formatNumber(result['compoundedLeveredRetrun']*100)
+            txt = txt + '\n' + u'Kelly Compounded NO Levered return: %s%%' % formatNumber(result['compoundedReturn']*100)
+            plt.subplots_adjust(bottom = 0.1)
+            pdffile = PdfPages(savefig_path)
+
+            pdffile.savefig(fig)
+
+            plt.clf()
+
+            secondPage = plt.figure(figsize=(10, 16))
+            secondPage.text(0.05,0.5, txt, transform=secondPage.transFigure, size=14, ha="left")
+            pdffile.savefig(secondPage)
+            secondPage.clf()
+
+        return df, result, pdffile
        
         
 ########################################################################

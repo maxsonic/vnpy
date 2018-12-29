@@ -356,7 +356,7 @@ class BarGenerator(object):
         self.bar = None             # 1分钟K线对象
         self.onBar = onBar          # 1分钟K线回调函数
         
-        self.xminBar = None         # X分钟K线对象
+        self.xminBar = dict()         # X分钟K线对象
         self.xmin = xmin            # X的值
         self.onXminBar = onXminBar  # X分钟K线的回调函数
         
@@ -429,7 +429,8 @@ class BarGenerator(object):
         1分钟K线更新
         """
         # 尚未创建对象
-        self.xminBar = dict()
+        if self.xminBar is None:
+            self.xminBar = dict()
         for symbol, b in bar.items():
             if self.xminBar.get(symbol) is None:
                 self.xminBar[symbol] = VtBarData()
@@ -479,11 +480,12 @@ class ArrayManager(object):
     """
 
     #----------------------------------------------------------------------
-    def __init__(self, size=100):
+    def __init__(self, size=100, symbol=""):
         """Constructor"""
         self.count = 0                      # 缓存计数
         self.size = size                    # 缓存大小
         self.inited = False                 # True if count>=size
+        self.symbol = symbol
         
         self.openArray = np.zeros(size)     # OHLC
         self.highArray = np.zeros(size)
@@ -497,7 +499,7 @@ class ArrayManager(object):
         self.count += 1
         if not self.inited and self.count >= self.size:
             self.inited = True
-        
+
         self.openArray[0:self.size-1] = self.openArray[1:self.size]
         self.highArray[0:self.size-1] = self.highArray[1:self.size]
         self.lowArray[0:self.size-1] = self.lowArray[1:self.size]
@@ -567,7 +569,7 @@ class ArrayManager(object):
     #----------------------------------------------------------------------
     def atr(self, n, array=False):
         """ATR指标"""
-        result = talib.ATR(self.high, self.low, self.close, n)
+        result = talib.ATR(self.high, self.low, self.close, timeperiod=n)
         if array:
             return result
         return result[-1]
@@ -621,13 +623,203 @@ class ArrayManager(object):
         
         return up, down, b1, b2   
     
+    def bollingerb2(self, n, array=False):
+        return self.new_boll(n, 2)[-1]
+
+    def bollingerb1(self, n, array=False):
+        return self.new_boll(n, 2)[-1]
+
+    def coppock_curve(self, n, array=False):
+        df = pd.DataFrame()
+        df['Close'] = pd.Series(self.close)
+        M = df['Close'].diff(int(n * 11 / 10) - 1)
+        N = df['Close'].shift(int(n * 11 / 10) - 1)
+        ROC1 = M / N
+        M = df['Close'].diff(int(n * 14 / 10) - 1)
+        N = df['Close'].shift(int(n * 14 / 10) - 1)
+        ROC2 = M / N
+        return (ROC1 + ROC2).ewm(span=n, min_periods=n).mean()[-1]
+
+    def aroonosc(self, n, array=False):
+        high = self.high
+        low = self.low
+        real = talib.AROONOSC(high, low, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def bop(self, n, array=False):
+        high = self.high
+        low = self.low
+        open_ = self.open
+        close = self.close
+        real = talib.BOP(open_, high, low, close)
+        if array:
+            return real
+        return real[-1]
+
+    def cmo(self, n, array=False):
+        close = self.close
+        real = talib.CMO(close, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def dx(self, n, array=False):
+        high = self.high
+        low = self.low
+        open_ = self.open
+        close = self.close
+        real = talib.DX(high, low, close, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def minus_di(self, n, array=False):
+        high = self.high
+        low = self.low
+        close = self.close
+        real = talib.MINUS_DI(high, low, close, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def minus_dm(self, n, array=False):
+        high = self.high
+        low = self.low
+        real = talib.MINUS_DM(high, low, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def mom(self, n, array=False):
+        close = self.close
+        real = talib.MOM(close, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def plus_di(self, n, array=False):
+        high = self.high
+        low = self.low
+        close = self.close
+        real = talib.PLUS_DI(high, low, close, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def plus_dm(self, n, array=False):
+        high = self.high
+        low = self.low
+        real = talib.PLUS_DM(high, low, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def rocp(self, n, array=False):
+        real = talib.ROCP(self.close, timeperiod=n)
+        return real[-1]
+
+    def rocr(self, n, array=False):
+        real = talib.ROCR(self.close, timeperiod=n)
+        return real[-1]
+
+    def rocr100(self, n, array=False):
+        real = talib.ROCR100(self.close, timeperiod=n)
+        return real[-1]
+
+    def natr(self, n, array=False):
+        real = talib.NATR(self.close, timeperiod=n)
+        return real[-1]
+
     def trix(self, n, array=False):
+        #print("trix", n, self.close)
         trix = talib.TRIX(self.close, timeperiod=n)
         return trix[-1]
 
     def roc(self, n, array=False):
         roc = talib.ROC(self.close, timeperiod=n)
+        if array:
+            return roc
         return roc[-1]
+
+    def willr(self, n, array=False):
+        high = self.high
+        low = self.low
+        close = self.close
+        real = talib.WILLR(high, low, close, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def adx(self, n, array=False):
+        high = self.high
+        low = self.low
+        close = self.close
+        real = talib.ADX(high, low, close, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def adxr(self, n, array=False):
+        high = self.high
+        low = self.low
+        close = self.close
+        real = talib.ADXR(high, low, close, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def mfi(self, n, array=False):
+        """Calculate Money Flow Index and Ratio for given data.
+        """
+        high = self.high
+        low = self.low
+        volume = self.volume
+        close = self.close
+        real = talib.MFI(high, low, close, volume, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def cci(self, n, array=False):
+        """Calculate Commodity Channel Index for given data.
+        """
+        high = self.high
+        low = self.low
+        volume = self.volume
+        close = self.close
+        real = talib.CCI(high, low, close, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def natr(self, n, array=False):
+        high = self.high
+        low = self.low
+        close = self.close
+        real = talib.NATR(high, low, close, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def ad(self, n, array=False):
+        high = self.high
+        low = self.low
+        volume = self.volume
+        close = self.close
+        real = talib.AD(high, low, close, volume)
+        if array:
+            return real
+        return real[-1]
+
+    def obv(self, n, array=False):
+        volume = self.volume
+        close = self.close
+        real = talib.OBV(close, volume)
+        if array:
+            return real
+        return real[-1]
 
     def stochastic_oscillator(self, n, array=False):
         """Calculate stochastic oscillator %D for given data.
