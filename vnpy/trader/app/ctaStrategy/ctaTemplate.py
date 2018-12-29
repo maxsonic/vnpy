@@ -675,7 +675,7 @@ class ArrayManager(object):
             return real
         return real[-1]
 
-    def minus_di(self, n, array=False):
+    def minusdi(self, n, array=False):
         high = self.high
         low = self.low
         close = self.close
@@ -684,7 +684,7 @@ class ArrayManager(object):
             return real
         return real[-1]
 
-    def minus_dm(self, n, array=False):
+    def minusdm(self, n, array=False):
         high = self.high
         low = self.low
         real = talib.MINUS_DM(high, low, timeperiod=n)
@@ -699,7 +699,7 @@ class ArrayManager(object):
             return real
         return real[-1]
 
-    def plus_di(self, n, array=False):
+    def plusdi(self, n, array=False):
         high = self.high
         low = self.low
         close = self.close
@@ -708,7 +708,7 @@ class ArrayManager(object):
             return real
         return real[-1]
 
-    def plus_dm(self, n, array=False):
+    def plusdm(self, n, array=False):
         high = self.high
         low = self.low
         real = talib.PLUS_DM(high, low, timeperiod=n)
