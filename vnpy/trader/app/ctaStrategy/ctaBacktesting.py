@@ -1394,7 +1394,7 @@ class BacktestingEngine(object):
             txt = txt + '\n' + u'Kelly Compounded Levered return: %s%%' % formatNumber(result['compoundedLeveredRetrun']*100)
             txt = txt + '\n' + u'Kelly Compounded NO Levered return: %s%%' % formatNumber(result['compoundedReturn']*100)
             plt.subplots_adjust(bottom = 0.1)
-            pdffile = PdfPages(savefig_path)
+            pdffile = PdfPages(savefig_path.replace(".pdf", "_sharpe_%s" % formatNumber(result["sharpeRatio"]))+".pdf")
 
             pdffile.savefig(fig)
 
