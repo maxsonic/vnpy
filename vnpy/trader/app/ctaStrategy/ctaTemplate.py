@@ -626,7 +626,7 @@ class ArrayManager(object):
     def bollingerb2(self, n, array=False):
         return self.new_boll(n, 2)[-1]
 
-    def bollingerb1(self, n, array=False):
+    def bollingerb(self, n, array=False):
         return self.new_boll(n, 2)[-1]
 
     def coppock_curve(self, n, array=False):
