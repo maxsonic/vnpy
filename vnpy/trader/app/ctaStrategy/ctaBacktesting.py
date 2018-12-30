@@ -1405,7 +1405,7 @@ class BacktestingEngine(object):
             pdffile.savefig(secondPage)
             secondPage.clf()
 
-        return df, result, pdffile
+        return df, result, pdffile if savefig_path is not None else None
        
         
 ########################################################################
