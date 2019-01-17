@@ -133,8 +133,9 @@ def loadRQCsv(fileName, dbName, symbol):
         bar.high = float(d['High'])
         bar.low = float(d['Low'])
         bar.close = float(d['Close'])
-        bar.date = datetime.strptime(d['Date Time'], '%Y-%m-%d %H:%M:%S').strftime('%Y%m%d')
-        bar.time = datetime.strptime(d['Date Time'], '%Y-%m-%d %H:%M:%S').strftime('%H:%M:%S')
+        baseTime = datetime.strptime(d['Date Time'], '%Y-%m-%d %H:%M:%S') - timedelta(minutes=1)
+        bar.date = baseTime.strftime('%Y%m%d')
+        bar.time = baseTime.strftime('%H:%M:%S')
         bar.datetime = datetime.strptime(bar.date + ' ' + bar.time, '%Y%m%d %H:%M:%S')
         bar.volume = d['Volume']
         bar.openInterest = d['open_interest']
