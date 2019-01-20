@@ -582,14 +582,14 @@ class ArrayManager(object):
             return result
         return result[-1]
     
-    #----------------------------------------------------------------------
-    def macd(self, fastPeriod, slowPeriod, signalPeriod, array=False):
-        """MACD指标"""
-        macd, signal, hist = talib.MACD(self.close, fastPeriod,
-                                        slowPeriod, signalPeriod)
-        if array:
-            return macd, signal, hist
-        return macd[-1], signal[-1], hist[-1]
+    # #----------------------------------------------------------------------
+    # def macd(self, fastPeriod, slowPeriod, signalPeriod, array=False):
+    #     """MACD指标"""
+    #     macd, signal, hist = talib.MACD(self.close, fastPeriod,
+    #                                     slowPeriod, signalPeriod)
+    #     if array:
+    #         return macd, signal, hist
+    #     return macd[-1], signal[-1], hist[-1]
     
     #----------------------------------------------------------------------
     def adx(self, n, array=False):
@@ -627,7 +627,7 @@ class ArrayManager(object):
         return self.new_boll(n, 2)[-1]
 
     def bollingerb(self, n, array=False):
-        return self.new_boll(n, 2)[-1]
+        return self.new_boll(n, 2)[-2]
 
     def coppock_curve(self, n, array=False):
         df = pd.DataFrame()
@@ -757,6 +757,27 @@ class ArrayManager(object):
         low = self.low
         close = self.close
         real = talib.ADX(high, low, close, timeperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def macd(self, n, array=False):
+        close = self.close
+        real, _, _ = talib.MACDFIX(close, signalperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def macdhist(self, n, array=False):
+        close = self.close
+        _, _, real = talib.MACDFIX(close, signalperiod=n)
+        if array:
+            return real
+        return real[-1]
+
+    def macdsignal(self, n, array=False):
+        close = self.close
+        _, real, _ = talib.MACDFIX(close, signalperiod=n)
         if array:
             return real
         return real[-1]
