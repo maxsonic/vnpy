@@ -1197,6 +1197,8 @@ class BacktestingEngine(object):
         
         endBalance = df['balance'].iloc[-1]
         maxDrawdown = df['drawdown'].min()
+        tmp = df.reset_index().reset_index()
+        longestDrawdownDuration = tmp[tmp["drawdown"] == 0]["index"].diff().max()
         maxDdPercent = df['ddPercent'].min()
         
         totalNetPnl = df['netPnl'].sum()
@@ -1245,6 +1247,7 @@ class BacktestingEngine(object):
             'lossDays': lossDays,
             'endBalance': endBalance,
             'maxDrawdown': maxDrawdown,
+            'longestDrawdownDuration': longestDrawdownDuration,
             'maxDdPercent': maxDdPercent,
             'totalNetPnl': totalNetPnl,
             'dailyNetPnl': dailyNetPnl,
@@ -1299,6 +1302,7 @@ class BacktestingEngine(object):
         self.output(u'年化收益：\t%s%%' % formatNumber(result['annualizedReturn']))
         self.output(u'总盈亏：\t%s' % formatNumber(result['totalNetPnl']))
         self.output(u'最大回撤: \t%s' % formatNumber(result['maxDrawdown']))   
+        self.output(u'Longest Drawdown Duration: \t%s' % formatNumber(result['longestDrawdownDuration']))   
         self.output(u'百分比最大回撤: %s%%' % formatNumber(result['maxDdPercent']))   
         
         self.output(u'总手续费：\t%s' % formatNumber(result['totalCommission']))
@@ -1366,6 +1370,8 @@ class BacktestingEngine(object):
             txt = txt + '\n' + u'annualize return: %s%%' % formatNumber(result['annualizedReturn'])
             txt = txt + '\n' + u'total net pnl: %s' % formatNumber(result['totalNetPnl'])
             txt = txt + '\n' + u'max drawdown: %s' % formatNumber(result['maxDrawdown'])   
+            txt = txt + '\n' + u'longest drawdown duration: %s' % formatNumber(result['longestDrawdownDuration'])   
+
             txt = txt + '\n' + u'max drawdown percent: %s%%' % formatNumber(result['maxDdPercent'])   
         
             txt = txt + '\n' + u'total commision: %s' % formatNumber(result['totalCommission'])
@@ -1394,8 +1400,10 @@ class BacktestingEngine(object):
             txt = txt + '\n' + u'Kelly Compounded Levered return: %s%%' % formatNumber(result['compoundedLeveredRetrun']*100)
             txt = txt + '\n' + u'Kelly Compounded NO Levered return: %s%%' % formatNumber(result['compoundedReturn']*100)
             plt.subplots_adjust(bottom = 0.1)
-            pdffile = PdfPages(savefig_path.replace(".pdf", "_sharpe_%s_mdd_%spercent" % (formatNumber(result["sharpeRatio"]),
-                                                                                          formatNumber(result['maxDdPercent'])))+".pdf")
+            pdffile = PdfPages(savefig_path.replace(".pdf", "_sharpe_%s_mdd_%s_mddp_%s_ldd_%s" % (formatNumber(result["sharpeRatio"]),
+                                                                                                 formatNumber(result['maxDrawdown']),
+                                                                                                 formatNumber(result['maxDdPercent']),
+                                                                                                 formatNumber(result['longestDrawdownDuration'])))+".pdf")
 
             pdffile.savefig(fig)
 
