@@ -128,10 +128,9 @@ class BacktestingEngine(object):
         self.startDate = startDate
         self.initDays = initDays
         
-        self.dataStartDate = datetime.strptime(startDate, '%Y%m%d')
-        
         initTimeDelta = timedelta(initDays)
-        self.strategyStartDate = self.dataStartDate + initTimeDelta
+        self.strategyStartDate = datetime.strptime(startDate, '%Y%m%d')
+        self.dataStartDate = datetime.strptime(startDate, '%Y%m%d') - initTimeDelta
         
     #----------------------------------------------------------------------
     def setEndDate(self, endDate=''):
