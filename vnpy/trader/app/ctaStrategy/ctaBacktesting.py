@@ -99,11 +99,37 @@ class BacktestingEngine(object):
         # 日线回测结果计算用
         # self.dailyResultDict = OrderedDict()
         self.dailyResultDict = {}
+
+        # Keep using the same plt fig to save memory and fd
+        self.plt_fig_num_map = {}
     
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.close()
+
     #------------------------------------------------
     # 通用功能
     #------------------------------------------------    
-    
+    #----------------------------------------------------------------------
+    def close(self):
+        for number in self.plt_fig_num_map.values():
+            plt.close(number)
+
+    #----------------------------------------------------------------------
+    def get_new_figure(self, figsize=(10, 16)):
+        fig = None
+        plt_fig_num = self.plt_fig_num_map.get(figsize, -1)
+
+        if plt_fig_num == -1:
+            fig = plt.figure(figsize=figsize)
+            self.plt_fig_num_map[figsize] = fig.number
+        else:
+            fig = plt.figure(num=plt_fig_num, clear=True)
+
+        return fig
+
     #----------------------------------------------------------------------
     def roundToPriceTick(self, price):
         """取整价格到合约最小价格变动"""
@@ -952,7 +978,7 @@ class BacktestingEngine(object):
         self.output(u'盈亏比：\t%s' %formatNumber(d['profitLossRatio']))
     
         # 绘图
-        fig = plt.figure(figsize=(10, 16))
+        fig = self.get_new_figure(figsize=(10, 16))
         
         pCapital = plt.subplot(4, 1, 1)
         pCapital.set_ylabel("capital")
@@ -1001,12 +1027,9 @@ class BacktestingEngine(object):
             txt = txt + '\n' + u'profit lost ratio: %s' %formatNumber(d['profitLossRatio'])
             pdffile.savefig(fig)
 
-            plt.clf()
-
-            secondPage = plt.figure(figsize=(10, 16))
+            secondPage = self.get_new_figure(figsize=(10, 16))
             secondPage.text(0.05,0.7, txt, transform=secondPage.transFigure, size=14, ha="left")
             pdffile.savefig(secondPage)
-            secondPage.clf()
 
             pdffile.close()
         return d
@@ -1331,8 +1354,7 @@ class BacktestingEngine(object):
         self.output(u'Kelly Compounded NO Levered return ：\t%s%%' % formatNumber(result['compoundedReturn']*100))
         
         # 绘图
-        fig = plt.figure(figsize=(10, 16))
-        
+        fig = self.get_new_figure(figsize=(10, 16))
         pBalance = plt.subplot(4, 1, 1)
         pBalance.set_title('Balance')
         df['balance'].plot(legend=True)
@@ -1406,12 +1428,9 @@ class BacktestingEngine(object):
 
             pdffile.savefig(fig)
 
-            plt.clf()
-
-            secondPage = plt.figure(figsize=(10, 16))
+            secondPage = self.get_new_figure(figsize=(10, 16))
             secondPage.text(0.05,0.5, txt, transform=secondPage.transFigure, size=14, ha="left")
             pdffile.savefig(secondPage)
-            secondPage.clf()
 
         return df, result, pdffile if savefig_path is not None else None
        
