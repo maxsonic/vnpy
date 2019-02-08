@@ -1219,8 +1219,9 @@ class BacktestingEngine(object):
         
         endBalance = df['balance'].iloc[-1]
         maxDrawdown = df['drawdown'].min()
-        tmp = df.reset_index().reset_index()
-        longestDrawdownDuration = tmp[tmp["drawdown"] == 0]["index"].diff().max()
+        tmp = df.reset_index()
+        tmp["drawdown"].iloc[-1] = 0
+        longestDrawdownDuration = tmp[tmp["drawdown"] == 0].index.to_series().diff().max()
         maxDdPercent = df['ddPercent'].min()
         
         totalNetPnl = df['netPnl'].sum()
