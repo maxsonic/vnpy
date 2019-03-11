@@ -263,7 +263,11 @@ class CtaEngine(object):
         self.processStopOrder(tick)
 
         # 推送tick到对应的策略实例进行处理
-        s = tick.vtSymbol[:-4]
+        s = ""
+        if tick.vtSymbol[-4].isalpha():
+            s = tick.vtSymbol[:-3]
+        else:
+            s = tick.vtSymbol[:-4]
         if s in self.tickStrategyDict or tick.vtSymbol in self.tickStrategyDict:
             # tick时间可能出现异常数据，使用try...except实现捕捉和过滤
             try:
