@@ -1242,8 +1242,8 @@ class BacktestingEngine(object):
         totalReturn = (endBalance/self.capital - 1) * 100
         annualizedReturn = totalReturn / totalDays * 240
 
-        meanReturnForKelly = df['return'].mean() * 240  
-        stdReturnForKelly = df['return'].std() * math.sqrt(240) 
+        meanReturnForKelly = df['positionPnlPercent'].dropna().mean() * 240  
+        stdReturnForKelly = df['positionPnlPercent'].dropna().std() * math.sqrt(240) 
         meanExcessReturnForKelly = meanReturnForKelly - 0.04
         sharpeRatioExcessKelly = meanExcessReturnForKelly / stdReturnForKelly
         sharpeRatioKelly = meanReturnForKelly / stdReturnForKelly
@@ -1493,7 +1493,8 @@ class DailyResult(object):
         self.commission = 0             # 手续费
         self.slippage = 0               # 滑点
         self.netPnl = 0                 # 净盈亏
-        
+        self.positionPnlPercent = 0
+        self.netPnlPercent = 0
     #----------------------------------------------------------------------
     def addTrade(self, trade):
         """添加交易"""
@@ -1502,15 +1503,10 @@ class DailyResult(object):
     #----------------------------------------------------------------------
     def calculatePnl(self, openPosition=0, size=1, rate=0, slippage=0,
                      slippageFunc=None, rateFunc=None):
-        """
-        计算盈亏
-        size: 合约乘数
-        rate：手续费率
-        slippage：滑点点数
-        """
         # 持仓部分
         self.openPosition = openPosition
         self.positionPnl = self.openPosition * (self.closePrice - self.previousClose) * size
+        self.positionPnlPercent = self.openPosition * (np.log(self.closePrice) - np.log(self.previousClose))
         self.closePosition = self.openPosition
         
         # 交易部分
@@ -1527,16 +1523,25 @@ class DailyResult(object):
             self.turnover += trade.price * trade.volume * size
             if rateFunc is None:
                 self.commission += trade.price * trade.volume * size * rate
+                tradePnlPercent = posChange * (np.log(self.closePrice * size - trade.price * trade.volume * size * rate) - np.log(trade.price * size))
+                self.positionPnlPercent = self.positionPnlPercent + tradePnlPercent
             else:
                 self.commission += rateFunc(trade.price * trade.volume * size, rate)
+                tradePnlPercent = posChange * (np.log(self.closePrice * size - rateFunc(trade.price * trade.volume * size, rate)) - np.log(trade.price * size))
+                self.positionPnlPercent = self.positionPnlPercent + tradePnlPercent
             if slippageFunc is None:
                 self.slippage += trade.volume * size * slippage
+                tradePnlPercent = posChange * (np.log(self.closePrice * size - trade.volume * size * slippage) - np.log(trade.price * size))
+                self.positionPnlPercent = self.positionPnlPercent + tradePnlPercent
             else:
                 self.slippage += slippageFunc(slippage, size, trade.volume)
+                tradePnlPercent = posChange * (np.log(self.closePrice * size - slippageFunc(slippage, size, trade.volume)) - np.log(trade.price * size))
+                self.positionPnlPercent = self.positionPnlPercent + tradePnlPercent
         
         # 汇总
         self.totalPnl = self.tradingPnl + self.positionPnl
         self.netPnl = self.totalPnl - self.commission - self.slippage
+        self.netPnlPercent = self.netPnlPercent + self.positionPnlPercent
 
 
 ########################################################################
