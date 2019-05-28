@@ -1,24 +1,24 @@
 Determining if the pthread_create exist failed with the following output:
-Change Dir: /home/vnpy/桌面/new/vn.ib/build/CMakeFiles/CMakeTmp
+Change Dir: /home/maxsonic/projects/vnpy/vnpy/api/ib/build/CMakeFiles/CMakeTmp
 
-Run Build Command:"/usr/bin/make" "cmTC_deeb6/fast"
-/usr/bin/make -f CMakeFiles/cmTC_deeb6.dir/build.make CMakeFiles/cmTC_deeb6.dir/build
-make[1]: Entering directory '/home/vnpy/桌面/new/vn.ib/build/CMakeFiles/CMakeTmp'
-Building CXX object CMakeFiles/cmTC_deeb6.dir/CheckSymbolExists.cxx.o
-/usr/bin/c++     -fPIC -std=c++11    -o CMakeFiles/cmTC_deeb6.dir/CheckSymbolExists.cxx.o -c /home/vnpy/桌面/new/vn.ib/build/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx
-Linking CXX executable cmTC_deeb6
-/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_deeb6.dir/link.txt --verbose=1
-/usr/bin/c++    -fPIC -std=c++11     CMakeFiles/cmTC_deeb6.dir/CheckSymbolExists.cxx.o  -o cmTC_deeb6 -rdynamic 
-CMakeFiles/cmTC_deeb6.dir/CheckSymbolExists.cxx.o：在函数‘main’中：
-CheckSymbolExists.cxx:(.text+0x1b)：对‘pthread_create’未定义的引用
+Run Build Command:"/usr/bin/make" "cmTC_8c795/fast"
+/usr/bin/make -f CMakeFiles/cmTC_8c795.dir/build.make CMakeFiles/cmTC_8c795.dir/build
+make[1]: Entering directory '/home/maxsonic/projects/vnpy/vnpy/api/ib/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_8c795.dir/CheckSymbolExists.cxx.o
+/usr/bin/c++     -fPIC -std=c++11    -o CMakeFiles/cmTC_8c795.dir/CheckSymbolExists.cxx.o -c /home/maxsonic/projects/vnpy/vnpy/api/ib/build/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx
+Linking CXX executable cmTC_8c795
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8c795.dir/link.txt --verbose=1
+/usr/bin/c++    -fPIC -std=c++11     CMakeFiles/cmTC_8c795.dir/CheckSymbolExists.cxx.o  -o cmTC_8c795 -rdynamic 
+CMakeFiles/cmTC_8c795.dir/CheckSymbolExists.cxx.o: In function `main':
+CheckSymbolExists.cxx:(.text+0x1b): undefined reference to `pthread_create'
 collect2: error: ld returned 1 exit status
-CMakeFiles/cmTC_deeb6.dir/build.make:97: recipe for target 'cmTC_deeb6' failed
-make[1]: *** [cmTC_deeb6] Error 1
-make[1]: Leaving directory '/home/vnpy/桌面/new/vn.ib/build/CMakeFiles/CMakeTmp'
-Makefile:126: recipe for target 'cmTC_deeb6/fast' failed
-make: *** [cmTC_deeb6/fast] Error 2
+CMakeFiles/cmTC_8c795.dir/build.make:97: recipe for target 'cmTC_8c795' failed
+make[1]: *** [cmTC_8c795] Error 1
+make[1]: Leaving directory '/home/maxsonic/projects/vnpy/vnpy/api/ib/build/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_8c795/fast' failed
+make: *** [cmTC_8c795/fast] Error 2
 
-File /home/vnpy/桌面/new/vn.ib/build/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx:
+File /home/maxsonic/projects/vnpy/vnpy/api/ib/build/CMakeFiles/CMakeTmp/CheckSymbolExists.cxx:
 /* */
 #include <pthread.h>
 
@@ -34,22 +34,22 @@ int main(int argc, char** argv)
 }
 
 Determining if the function pthread_create exists in the pthreads failed with the following output:
-Change Dir: /home/vnpy/桌面/new/vn.ib/build/CMakeFiles/CMakeTmp
+Change Dir: /home/maxsonic/projects/vnpy/vnpy/api/ib/build/CMakeFiles/CMakeTmp
 
-Run Build Command:"/usr/bin/make" "cmTC_704c9/fast"
-/usr/bin/make -f CMakeFiles/cmTC_704c9.dir/build.make CMakeFiles/cmTC_704c9.dir/build
-make[1]: Entering directory '/home/vnpy/桌面/new/vn.ib/build/CMakeFiles/CMakeTmp'
-Building CXX object CMakeFiles/cmTC_704c9.dir/CheckFunctionExists.cxx.o
-/usr/bin/c++     -fPIC -std=c++11 -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_704c9.dir/CheckFunctionExists.cxx.o -c /home/vnpy/桌面/new/vn.ib/build/CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx
-Linking CXX executable cmTC_704c9
-/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_704c9.dir/link.txt --verbose=1
-/usr/bin/c++    -fPIC -std=c++11 -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_704c9.dir/CheckFunctionExists.cxx.o  -o cmTC_704c9 -rdynamic -lpthreads 
-/usr/bin/ld: 找不到 -lpthreads
+Run Build Command:"/usr/bin/make" "cmTC_ba933/fast"
+/usr/bin/make -f CMakeFiles/cmTC_ba933.dir/build.make CMakeFiles/cmTC_ba933.dir/build
+make[1]: Entering directory '/home/maxsonic/projects/vnpy/vnpy/api/ib/build/CMakeFiles/CMakeTmp'
+Building CXX object CMakeFiles/cmTC_ba933.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++     -fPIC -std=c++11 -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_ba933.dir/CheckFunctionExists.cxx.o -c /home/maxsonic/projects/vnpy/vnpy/api/ib/build/CMakeFiles/CheckLibraryExists/CheckFunctionExists.cxx
+Linking CXX executable cmTC_ba933
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ba933.dir/link.txt --verbose=1
+/usr/bin/c++    -fPIC -std=c++11 -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTC_ba933.dir/CheckFunctionExists.cxx.o  -o cmTC_ba933 -rdynamic -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
 collect2: error: ld returned 1 exit status
-CMakeFiles/cmTC_704c9.dir/build.make:97: recipe for target 'cmTC_704c9' failed
-make[1]: *** [cmTC_704c9] Error 1
-make[1]: Leaving directory '/home/vnpy/桌面/new/vn.ib/build/CMakeFiles/CMakeTmp'
-Makefile:126: recipe for target 'cmTC_704c9/fast' failed
-make: *** [cmTC_704c9/fast] Error 2
+CMakeFiles/cmTC_ba933.dir/build.make:97: recipe for target 'cmTC_ba933' failed
+make[1]: *** [cmTC_ba933] Error 1
+make[1]: Leaving directory '/home/maxsonic/projects/vnpy/vnpy/api/ib/build/CMakeFiles/CMakeTmp'
+Makefile:126: recipe for target 'cmTC_ba933/fast' failed
+make: *** [cmTC_ba933/fast] Error 2
 
 

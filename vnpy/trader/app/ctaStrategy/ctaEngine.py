@@ -483,7 +483,8 @@ class CtaEngine(object):
             allContracts = self.mainEngine.getAllContracts()
             for anyContract in allContracts:
                 # self.writeCtaLog("our symbol %s, server symbol %s" % (vtSymbol, anyContract.symbol))
-                if vtSymbol in anyContract.symbol:
+                # sim = anyContract.symbol[:-4] if not anyContract.symbol[-4].isalpha() else anyContract.symbol[:-3] 
+                if vtSymbol == anyContract:
                     contract = self.mainEngine.getContract(anyContract.symbol)
                     if contract:
                         req = VtSubscribeReq()
@@ -493,7 +494,6 @@ class CtaEngine(object):
                         # 对于IB接口订阅行情时所需的货币和产品类型，从策略属性中获取
                         req.currency = strategy.currency
                         req.productClass = strategy.productClass
-
                         self.mainEngine.subscribe(req, contract.gatewayName)
                     else:
                         self.writeCtaLog(u'%s的交易合约%s无法找到' %(strategy.name, strategy.vtSymbol))

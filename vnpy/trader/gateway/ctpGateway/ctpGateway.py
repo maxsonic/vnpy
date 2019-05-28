@@ -66,8 +66,6 @@ productClassMap[PRODUCT_FUTURES] = defineDict["THOST_FTDC_PC_Futures"]
 productClassMap[PRODUCT_OPTION] = defineDict["THOST_FTDC_PC_Options"]
 productClassMap[PRODUCT_COMBINATION] = defineDict["THOST_FTDC_PC_Combination"]
 productClassMapReverse = {v:k for k,v in productClassMap.items()}
-productClassMapReverse[defineDict["THOST_FTDC_PC_ETFOption"]] = PRODUCT_OPTION
-productClassMapReverse[defineDict["THOST_FTDC_PC_Stock"]] = PRODUCT_EQUITY
 
 # 委托状态映射
 statusMap = {}
@@ -108,7 +106,7 @@ class CtpGateway(VtGateway):
     def connect(self):
         """连接"""
         try:
-            f = file(self.filePath)
+            f = open(self.filePath)
         except IOError:
             log = VtLogData()
             log.gatewayName = self.gatewayName
@@ -118,6 +116,7 @@ class CtpGateway(VtGateway):
         
         # 解析json文件
         setting = json.load(f)
+        f.close()
         try:
             userID = str(setting['userID'])
             password = str(setting['password'])
@@ -128,11 +127,11 @@ class CtpGateway(VtGateway):
             # 如果json文件提供了验证码
             if 'authCode' in setting: 
                 authCode = str(setting['authCode'])
-                userProductInfo = str(setting['userProductInfo'])
+                appID = str(setting['appID'])
                 self.tdApi.requireAuthentication = True
             else:
                 authCode = None
-                userProductInfo = None
+                appID = None
 
         except KeyError:
             log = VtLogData()
@@ -143,17 +142,10 @@ class CtpGateway(VtGateway):
         
         # 创建行情和交易接口对象
         self.mdApi.connect(userID, password, brokerID, mdAddress)
-        self.tdApi.connect(userID, password, brokerID, tdAddress, authCode, userProductInfo)
+        self.tdApi.connect(userID, password, brokerID, tdAddress, authCode, appID)
         
         # 初始化并启动查询
         self.initQuery()
-
-    #--------------------------------------------------------------------
-    def disconnect(self):
-        #断开链接
-        #self.mdApi.close()
-        if self.tdConnected:
-            self.tdApi.close()
     
     #----------------------------------------------------------------------
     def subscribe(self, subscribeReq):
@@ -254,10 +246,6 @@ class CtpMdApi(MdApi):
         self.brokerID = EMPTY_STRING        # 经纪商代码
         self.address = EMPTY_STRING         # 服务器地址
         
-        self.tradingDt = None               # 交易日datetime对象
-        self.tradingDate = EMPTY_STRING     # 交易日期字符串
-        self.tickTime = None                # 最新行情time对象
-        
     #----------------------------------------------------------------------
     def onFrontConnected(self):
         """服务器连接"""
@@ -304,14 +292,6 @@ class CtpMdApi(MdApi):
             # 重新订阅之前订阅的合约
             for subscribeReq in self.subscribedSymbols:
                 self.subscribe(subscribeReq)
-                
-            # 获取交易日
-            #self.tradingDate = data['TradingDay']
-            #self.tradingDt = datetime.strptime(self.tradingDate, '%Y%m%d')
-            
-            # 登录时通过本地时间来获取当前的日期
-            self.tradingDt = datetime.now()
-            self.tradingDate = self.tradingDt.strftime('%Y%m%d')
                 
         # 否则，推送错误信息
         else:
@@ -394,20 +374,33 @@ class CtpMdApi(MdApi):
         tick.askVolume1 = data['AskVolume1']
         
         # 大商所日期转换
-        if tick.exchange is EXCHANGE_DCE:
-            newTime = datetime.strptime(tick.time, '%H:%M:%S.%f').time()    # 最新tick时间戳
-            
-            # 如果新tick的时间小于夜盘分隔，且上一个tick的时间大于夜盘分隔，则意味着越过了12点
-            if (self.tickTime and 
-                newTime < NIGHT_TRADING and
-                self.tickTime > NIGHT_TRADING):
-                self.tradingDt += timedelta(1)                          # 日期加1
-                self.tradingDate = self.tradingDt.strftime('%Y%m%d')    # 生成新的日期字符串
-                
-            tick.date = self.tradingDate    # 使用本地维护的日期
-            
-            self.tickTime = newTime         # 更新上一个tick时间
-        
+        if tick.exchange == EXCHANGE_DCE:
+            tick.date = datetime.now().strftime('%Y%m%d')
+
+        # 上交所，SSE，股票期权相关
+        if tick.exchange == EXCHANGE_SSE:
+            tick.bidPrice2 = data['BidPrice2']
+            tick.bidVolume2 = data['BidVolume2']
+            tick.askPrice2 = data['AskPrice2']
+            tick.askVolume2 = data['AskVolume2']
+
+            tick.bidPrice3 = data['BidPrice3']
+            tick.bidVolume3 = data['BidVolume3']
+            tick.askPrice3 = data['AskPrice3']
+            tick.askVolume3 = data['AskVolume3']
+
+            tick.bidPrice4 = data['BidPrice4']
+            tick.bidVolume4 = data['BidVolume4']
+            tick.askPrice4 = data['AskPrice4']
+            tick.askVolume4 = data['AskVolume4']
+
+            tick.bidPrice5 = data['BidPrice5']
+            tick.bidVolume5 = data['BidVolume5']
+            tick.askPrice5 = data['AskPrice5']
+            tick.askVolume5 = data['AskVolume5']
+
+            tick.date = data['TradingDay']
+
         self.gateway.onTick(tick)
         
     #---------------------------------------------------------------------- 
@@ -579,7 +572,6 @@ class CtpTdApi(TdApi):
             req['InvestorID'] = self.userID
             self.reqID += 1
             self.reqSettlementInfoConfirm(req, self.reqID)              
-                
         # 否则，推送错误信息
         else:
             err = VtErrorData()
@@ -735,7 +727,8 @@ class CtpTdApi(TdApi):
     #----------------------------------------------------------------------
     def onRspQryInvestorPosition(self, data, error, n, last):
         """持仓查询回报"""
-        if not data['InstrumentID']:
+        symbol = data.get('InstrumentID', '')
+        if not symbol:
             return
         
         # 获取持仓缓存对象
@@ -752,11 +745,19 @@ class CtpTdApi(TdApi):
             pos.direction = posiDirectionMapReverse.get(data['PosiDirection'], '')
             pos.vtPositionName = '.'.join([pos.vtSymbol, pos.direction]) 
         
+        exchange = self.symbolExchangeDict.get(pos.symbol, EXCHANGE_UNKNOWN)
+        
         # 针对上期所持仓的今昨分条返回（有昨仓、无今仓），读取昨仓数据
-        if data['YdPosition'] and not data['TodayPosition']:
-            pos.ydPosition = data['Position']
+        if exchange == EXCHANGE_SHFE:
+            if data['YdPosition'] and not data['TodayPosition']:
+                pos.ydPosition = data['Position']
+        # 否则基于总持仓和今持仓来计算昨仓数据
+        else:
+            pos.ydPosition = data['Position'] - data['TodayPosition']
             
         # 计算成本
+        if pos.symbol not in self.symbolSizeDict:
+            return
         size = self.symbolSizeDict[pos.symbol]
         cost = pos.price * pos.position * size
         
@@ -770,9 +771,9 @@ class CtpTdApi(TdApi):
         
         # 读取冻结
         if pos.direction is DIRECTION_LONG: 
-            pos.frozen += data['LongFrozen']
-        else:
             pos.frozen += data['ShortFrozen']
+        else:
+            pos.frozen += data['LongFrozen']
         
         # 查询回报结束
         if last:
@@ -843,6 +844,7 @@ class CtpTdApi(TdApi):
     #----------------------------------------------------------------------
     def onRspQryInstrument(self, data, error, n, last):
         """合约查询回报"""
+        
         contract = VtContractData()
         contract.gatewayName = self.gatewayName
 
@@ -1370,14 +1372,14 @@ class CtpTdApi(TdApi):
         pass
         
     #----------------------------------------------------------------------
-    def connect(self, userID, password, brokerID, address, authCode, userProductInfo):
+    def connect(self, userID, password, brokerID, address, authCode, appID):
         """初始化连接"""
         self.userID = userID                # 账号
         self.password = password            # 密码
         self.brokerID = brokerID            # 经纪商代码
         self.address = address              # 服务器地址
-        self.authCode = authCode            #验证码
-        self.userProductInfo = userProductInfo  #产品信息
+        self.appID = appID                  # 产品信息
+        self.authCode = authCode            # 验证码
         
         # 如果尚未建立服务器连接，则进行连接
         if not self.connectionStatus:
@@ -1421,12 +1423,12 @@ class CtpTdApi(TdApi):
     #----------------------------------------------------------------------
     def authenticate(self):
         """申请验证"""
-        if self.userID and self.brokerID and self.authCode and self.userProductInfo:
+        if self.userID and self.brokerID and self.authCode and self.appID:
             req = {}
             req['UserID'] = self.userID
             req['BrokerID'] = self.brokerID
             req['AuthCode'] = self.authCode
-            req['UserProductInfo'] = self.userProductInfo
+            req['AppID'] = self.appID
             self.reqID +=1
             self.reqAuthenticate(req, self.reqID)
 
@@ -1455,7 +1457,7 @@ class CtpTdApi(TdApi):
         
         req['InstrumentID'] = orderReq.symbol
         req['LimitPrice'] = orderReq.price
-        req['VolumeTotalOriginal'] = orderReq.volume
+        req['VolumeTotalOriginal'] = int(orderReq.volume)
         
         # 下面如果由于传入的类型本接口不支持，则会返回空字符串
         req['OrderPriceType'] = priceTypeMap.get(orderReq.priceType, '')
@@ -1483,7 +1485,7 @@ class CtpTdApi(TdApi):
         if orderReq.priceType == PRICETYPE_FOK:
             req['OrderPriceType'] = defineDict["THOST_FTDC_OPT_LimitPrice"]
             req['TimeCondition'] = defineDict['THOST_FTDC_TC_IOC']
-            req['VolumeCondition'] = defineDict['THOST_FTDC_VC_CV']        
+            req['VolumeCondition'] = int(defineDict['THOST_FTDC_VC_CV'])
         
         self.reqOrderInsert(req, self.reqID)
         
