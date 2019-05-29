@@ -572,6 +572,7 @@ class CtpTdApi(TdApi):
             req['InvestorID'] = self.userID
             self.reqID += 1
             self.reqSettlementInfoConfirm(req, self.reqID)              
+                
         # 否则，推送错误信息
         else:
             err = VtErrorData()
@@ -844,7 +845,6 @@ class CtpTdApi(TdApi):
     #----------------------------------------------------------------------
     def onRspQryInstrument(self, data, error, n, last):
         """合约查询回报"""
-        
         contract = VtContractData()
         contract.gatewayName = self.gatewayName
 

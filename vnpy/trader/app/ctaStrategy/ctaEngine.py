@@ -484,7 +484,7 @@ class CtaEngine(object):
             for anyContract in allContracts:
                 # self.writeCtaLog("our symbol %s, server symbol %s" % (vtSymbol, anyContract.symbol))
                 # sim = anyContract.symbol[:-4] if not anyContract.symbol[-4].isalpha() else anyContract.symbol[:-3] 
-                if vtSymbol == anyContract:
+                if vtSymbol in anyContract.symbol:
                     contract = self.mainEngine.getContract(anyContract.symbol)
                     if contract:
                         req = VtSubscribeReq()
