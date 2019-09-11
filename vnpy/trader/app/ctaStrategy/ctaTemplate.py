@@ -360,7 +360,7 @@ class BarGenerator(object):
         self.xmin = xmin            # X的值
         self.onXminBar = onXminBar  # X分钟K线的回调函数
         
-        self.lastTick = None        # 上一TICK缓存对象
+        self.lastTick = dict()       # 上一TICK缓存对象
         
     #----------------------------------------------------------------------
     def updateTick(self, tick):
@@ -414,13 +414,13 @@ class BarGenerator(object):
         self.bar[symbol].close = tick.lastPrice        
         self.bar[symbol].datetime = tick.datetime  
         self.bar[symbol].openInterest = tick.openInterest
-   
-        if self.lastTick:
-            volumeChange = (tick.volume - self.lastTick.volume) # 当前K线内的成交量
+        lastTick = self.lastTick.get(symbol) 
+        if lastTick is not None:
+            volumeChange = (tick.volume - lastTick.volume) # 当前K线内的成交量
             self.bar[symbol].volume += max(volumeChange, 0) # 当前K线内的成交量
             
         # 缓存Tick
-        self.lastTick = tick
+        self.lastTick[symbol] = tick
 
     #----------------------------------------------------------------------
     def updateBar(self, bar):
