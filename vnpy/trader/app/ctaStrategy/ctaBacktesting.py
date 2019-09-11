@@ -978,7 +978,7 @@ class BacktestingEngine(object):
         self.output(u'盈亏比：\t%s' %formatNumber(d['profitLossRatio']))
     
         # 绘图
-        fig = self.get_new_figure(figsize=(10, 16))
+        fig = self.get_new_figure(figsize=(20, 40))
         
         pCapital = plt.subplot(4, 1, 1)
         pCapital.set_ylabel("capital")
@@ -1027,7 +1027,7 @@ class BacktestingEngine(object):
             txt = txt + '\n' + u'profit lost ratio: %s' %formatNumber(d['profitLossRatio'])
             pdffile.savefig(fig)
 
-            secondPage = self.get_new_figure(figsize=(10, 16))
+            secondPage = self.get_new_figure(figsize=(20, 40))
             secondPage.text(0.05,0.7, txt, transform=secondPage.transFigure, size=14, ha="left")
             pdffile.savefig(secondPage)
 
@@ -1242,13 +1242,26 @@ class BacktestingEngine(object):
         totalReturn = (endBalance/self.capital - 1) * 100
         annualizedReturn = totalReturn / totalDays * 240
 
-        meanReturnForKelly = df['return'].mean() * 240  
-        stdReturnForKelly = df['return'].std() * math.sqrt(240) 
+        meanReturnForKelly = df['positionPnlPercent'].mean() * 240  
+        stdReturnForKelly = df['positionPnlPercent'].std() * math.sqrt(240) 
         meanExcessReturnForKelly = meanReturnForKelly - 0.04
-        sharpeRatioExcessKelly = meanExcessReturnForKelly / stdReturnForKelly
-        sharpeRatioKelly = meanReturnForKelly / stdReturnForKelly
-        kellyExcessF = meanExcessReturnForKelly / (stdReturnForKelly * stdReturnForKelly) 
-        kellyF = meanReturnForKelly / (stdReturnForKelly * stdReturnForKelly) 
+        try:
+            sharpeRatioExcessKelly = meanExcessReturnForKelly / stdReturnForKelly
+        except:
+            sharpeRatioExcessKelly = 0
+        try:
+            sharpeRatioKelly = meanReturnForKelly / stdReturnForKelly
+        except:
+            sharpeRatioKelly = 0
+        try:
+            kellyExcessF = meanExcessReturnForKelly / (stdReturnForKelly * stdReturnForKelly) 
+        except:
+            kellyExcessF = 0
+        try:
+            kellyF = meanReturnForKelly / (stdReturnForKelly * stdReturnForKelly) 
+        except:
+            kellyF = 0
+
         compoundedExcessLeveredRetrun = 0.04 + sharpeRatioExcessKelly*2 / 2
         compoundedLeveredRetrun = 0.04 + sharpeRatioKelly*2 / 2
         compoundedReturn = meanReturnForKelly - stdReturnForKelly*2 /2
@@ -1303,7 +1316,7 @@ class BacktestingEngine(object):
         return df, result
     
     #----------------------------------------------------------------------
-    def showDailyResult(self, df=None, result=None, savefig_path=None):
+    def showDailyResult(self, df=None, result=None, savefig_path=None, main_contract=None):
         """显示按日统计的交易结果"""
         if df is None:
             df = self.calculateDailyResult()
@@ -1355,20 +1368,35 @@ class BacktestingEngine(object):
         self.output(u'Kelly Compounded NO Levered return ：\t%s%%' % formatNumber(result['compoundedReturn']*100))
         
         # 绘图
-        fig = self.get_new_figure(figsize=(10, 16))
-        pBalance = plt.subplot(4, 1, 1)
+        fig = self.get_new_figure(figsize=(20, 40))
+        fig_num = 4
+        refer_num = 1
+        if main_contract is not None:
+            fig_num = 5
+        pBalance = plt.subplot(fig_num, 1, refer_num)
         pBalance.set_title('Balance')
         df['balance'].plot(legend=True)
+        refer_num = refer_num + 1
+        if main_contract is not None:
+            pClose = plt.subplot(fig_num, 1, refer_num)
+            pClose.set_title('Asset Under Test')
+            df['balance'].plot(legend=True)
+            main_contract = main_contract[main_contract.index >= pd.to_datetime(result['startDate'])]
+            main_contract = main_contract[main_contract.index <= pd.to_datetime(result['endDate'])]
+            main_contract["close"].plot(color="red", secondary_y=True, legend=True)
+            refer_num = refer_num + 1
         
-        pDrawdown = plt.subplot(4, 1, 2)
+        pDrawdown = plt.subplot(fig_num, 1, refer_num)
         pDrawdown.set_title('Drawdown')
         pDrawdown.fill_between(range(len(df)), df['drawdown'].values)
+        refer_num = refer_num + 1
         
-        pPnl = plt.subplot(4, 1, 3)
+        pPnl = plt.subplot(fig_num, 1, refer_num)
         pPnl.set_title('Daily Pnl') 
         df['netPnl'].plot(kind='bar', legend=False, grid=False, xticks=[])
+        refer_num = refer_num + 1
 
-        pKDE = plt.subplot(4, 1, 4)
+        pKDE = plt.subplot(fig_num, 1, refer_num)
         pKDE.set_title('Daily Pnl Distribution')
         df['netPnl'].hist(bins=50)
 
@@ -1429,7 +1457,7 @@ class BacktestingEngine(object):
 
             pdffile.savefig(fig)
 
-            secondPage = self.get_new_figure(figsize=(10, 16))
+            secondPage = self.get_new_figure(figsize=(20, 40))
             secondPage.text(0.05,0.5, txt, transform=secondPage.transFigure, size=14, ha="left")
             pdffile.savefig(secondPage)
 
@@ -1493,6 +1521,8 @@ class DailyResult(object):
         self.commission = 0             # 手续费
         self.slippage = 0               # 滑点
         self.netPnl = 0                 # 净盈亏
+        self.netPnlPercent = 0                 # 净盈亏
+        self.positionPnlPercent = 0                 # 净盈亏
         
     #----------------------------------------------------------------------
     def addTrade(self, trade):
@@ -1511,6 +1541,7 @@ class DailyResult(object):
         # 持仓部分
         self.openPosition = openPosition
         self.positionPnl = self.openPosition * (self.closePrice - self.previousClose) * size
+        self.positionPnlPercent = self.openPosition * (np.log(self.closePrice) - np.log(self.previousClose))
         self.closePosition = self.openPosition
         
         # 交易部分
@@ -1527,16 +1558,25 @@ class DailyResult(object):
             self.turnover += trade.price * trade.volume * size
             if rateFunc is None:
                 self.commission += trade.price * trade.volume * size * rate
+                tradePnlPercent = posChange * (np.log(self.closePrice - trade.price * trade.volume * size * rate) - np.log(trade.price))
+                self.positionPnlPercent = self.positionPnlPercent + tradePnlPercent
             else:
                 self.commission += rateFunc(trade.price * trade.volume * size, rate)
+                tradePnlPercent = posChange * (np.log(self.closePrice - rateFunc(trade.price * trade.volume * size, rate)) - np.log(trade.price))
+                self.positionPnlPercent = self.positionPnlPercent + tradePnlPercent
             if slippageFunc is None:
                 self.slippage += trade.volume * size * slippage
+                tradePnlPercent = posChange * (np.log(self.closePrice - trade.volume * size * slippage) - np.log(trade.price))
+                self.positionPnlPercent = self.positionPnlPercent + tradePnlPercent
             else:
                 self.slippage += slippageFunc(slippage, size, trade.volume)
+                tradePnlPercent = posChange * (np.log(self.closePrice - slippageFunc(slippage, size, trade.volume)) - np.log(trade.price))
+                self.positionPnlPercent = self.positionPnlPercent + tradePnlPercent
         
         # 汇总
         self.totalPnl = self.tradingPnl + self.positionPnl
         self.netPnl = self.totalPnl - self.commission - self.slippage
+        self.netPnlPercent = self.netPnlPercent - self.positionPnlPercent
 
 
 ########################################################################
