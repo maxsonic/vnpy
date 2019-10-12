@@ -880,6 +880,110 @@ class ArrayManager(object):
         if array:
             return up, down
         return up[-1], down[-1]
+
+    def apo(self, n, array=False):
+        real = talib.APO(self.close, fastperiod=n, slowperiod=n*2, matype=0)
+        return real[-1]
+    
+    def ppo(self, n, array=False):
+        real = talib.PPO(self.close, fastperiod=n, slowperiod=n*2, matype=0)
+        return real[-1]
+    
+    def ultosc(self, n, array=False):
+        real = talib.ULTOSC(self.high, self.low, self.close, timeperiod1=n, timeperiod2=n*2, timeperiod3=n*3)
+        return real[-1]
+    
+    def aroonup(self, n, array=False):
+        down, up = talib.AROON(self.high, self.low, timeperiod=n)
+        return up[-1]
+    
+    def aroondown(self, n, array=False):
+        down, up = talib.AROON(self.high, self.low, timeperiod=n)
+        return down[-1]
+    
+    def macd2(self, n, array=False):
+        macd, macdsignal, macdhist = talib.MACD(self.close, fastperiod=2*n, slowperiod=3*n, signalperiod=int(1.5*n))
+        return macd[-1]
+    
+    def macd2signal(self, n, array=False):
+        macd, macdsignal, macdhist = talib.MACD(self.close, fastperiod=2*n, slowperiod=3*n, signalperiod=int(1.5*n))
+        return macdsignal[-1]
+    
+    def macd2hist(self, n, array=False):
+        macd, macdsignal, macdhist = talib.MACD(self.close, fastperiod=2*n, slowperiod=3*n, signalperiod=int(1.5*n))
+        return macdhist[-1]
+    
+    def stochrsifastk(self, n, array=False):
+        fastk, fastd = talib.STOCHRSI(self.close, timeperiod=3*n, fastk_period=2*n, fastd_period=n, fastd_matype=0)
+        return fastk[-1]
+    
+    def stochrsifastd(self, n, array=False):
+        fastk, fastd = talib.STOCHRSI(self.close, timeperiod=3*n, fastk_period=2*n, fastd_period=n, fastd_matype=0)
+        return fastd[-1]
+    
+    def adosc(self, n, array=False):
+        real = talib.ADOSC(self.high, self.low, self.close, self.volume, fastperiod=n, slowperiod=3*n)
+        return real[-1]
+    
+    def htdcperiod(self, n, array=False):
+        real = talib.HT_DCPERIOD(self.close)
+        return real[-1]
+    
+    def htdcphase(self, n, array=False):
+        real = talib.HT_DCPHASE(self.close)
+        return real[-1]
+    
+    def htphasor(self, n, array=False):
+        real = talib.HT_PHASOR(self.close)
+        return real[-1]
+    
+    def htsine(self, n, array=False):
+        sine, leadsine = talib.HT_SINE(self.close)
+        return sine[-1]
+    
+    def htleadsine(self, n, array=False):
+        sine, leadsine = talib.HT_SINE(self.close)
+        return leadsine[-1]
+    
+    def httrendmode(self, n, array=False):
+        real = talib.HT_TRENDMODE(self.close)
+        return real[-1]
+    
+    def beta(self, n, array=False):
+        real = talib.BETA(self.high, self.low, timeperiod=n)
+        return real[-1]
+    
+    def correl(self, n, array=False):
+        real = talib.CORREL(self.high, self.low, timeperiod=n)
+        return real[-1]
+    
+    def linearreg(self, n, array=False):
+        real = talib.LINEARREG(self.close, timeperiod=n)
+        return real[-1]
+    
+    def linearregangle(self, n, array=False):
+        real = talib.LINEARREG_ANGLE(self.close, timeperiod=n)
+        return real[-1]
+    
+    def linearregintercept(self, n, array=False):
+        real = talib.LINEARREG_INTERCEPT(self.close, timeperiod=n)
+        return real[-1]
+    
+    def linearregslope(self, n, array=False):
+        real = talib.LINEARREG_SLOPE(self.close, timeperiod=n)
+        return real[-1]
+    
+    def stddev(self, n, array=False):
+        real = talib.STDDEV(self.close, timeperiod=n, nbdev=1)
+        return real[-1]
+    
+    def tsf(self, n, array=False):
+        real = talib.TSF(self.close, timeperiod=n)
+        return real[-1]
+    
+    def var(self, n, array=False):
+        real = talib.VAR(self.close, timeperiod=n, nbdev=1)
+        return real[-1]
     
 
 ########################################################################

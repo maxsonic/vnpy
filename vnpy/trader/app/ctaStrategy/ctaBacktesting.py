@@ -978,7 +978,7 @@ class BacktestingEngine(object):
         self.output(u'盈亏比：\t%s' %formatNumber(d['profitLossRatio']))
     
         # 绘图
-        fig = self.get_new_figure(figsize=(20, 40))
+        fig = self.get_new_figure(figsize=(10, 16))
         
         pCapital = plt.subplot(4, 1, 1)
         pCapital.set_ylabel("capital")
@@ -1027,7 +1027,7 @@ class BacktestingEngine(object):
             txt = txt + '\n' + u'profit lost ratio: %s' %formatNumber(d['profitLossRatio'])
             pdffile.savefig(fig)
 
-            secondPage = self.get_new_figure(figsize=(20, 40))
+            secondPage = self.get_new_figure(figsize=(10, 16))
             secondPage.text(0.05,0.7, txt, transform=secondPage.transFigure, size=14, ha="left")
             pdffile.savefig(secondPage)
 
@@ -1368,7 +1368,7 @@ class BacktestingEngine(object):
         self.output(u'Kelly Compounded NO Levered return ：\t%s%%' % formatNumber(result['compoundedReturn']*100))
         
         # 绘图
-        fig = self.get_new_figure(figsize=(20, 40))
+        fig = self.get_new_figure(figsize=(10, 16))
         fig_num = 4
         refer_num = 1
         if main_contract is not None:
@@ -1457,7 +1457,7 @@ class BacktestingEngine(object):
 
             pdffile.savefig(fig)
 
-            secondPage = self.get_new_figure(figsize=(20, 40))
+            secondPage = self.get_new_figure(figsize=(10, 16))
             secondPage.text(0.05,0.5, txt, transform=secondPage.transFigure, size=14, ha="left")
             pdffile.savefig(secondPage)
 
