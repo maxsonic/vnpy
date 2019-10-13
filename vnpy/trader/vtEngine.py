@@ -231,9 +231,9 @@ class MainEngine(object):
             collection = db[collectionName]
             
             if sortKey:
-                cursor = collection.find(d).sort(sortKey, sortDirection)    # 对查询出来的数据进行排序
+                cursor = collection.find(d, max_time_ms=120000).sort(sortKey, sortDirection)    # 对查询出来的数据进行排序
             else:
-                cursor = collection.find(d)
+                cursor = collection.find(d, max_time_ms=120000)
 
             if cursor:
                 return list(cursor)
