@@ -237,7 +237,7 @@ class BacktestingEngine(object):
         
         initCursors = {}
         for symbol, collection in collections.iteritems():
-            initCursors[symbol] = collection.find(flt, max_time_ms=120000).sort('datetime')
+            initCursors[symbol] = collection.find(flt, no_cursor_timeout=True).sort('datetime')
         
         # 将数据从查询指针中读取出，并生成列表
         self.initData = []              # 清空initData列表
@@ -302,7 +302,7 @@ class BacktestingEngine(object):
 
         self.dbCursor = {}
         for symbol, collection in collections.iteritems():
-            self.dbCursor[symbol] = collection.find(flt, max_time_ms=120000).sort('datetime')
+            self.dbCursor[symbol] = collection.find(flt, no_cursor_timeout=True).sort('datetime')
 
         # self.dbCursor = collection.find(flt).sort('datetime')
         
