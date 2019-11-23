@@ -423,7 +423,7 @@ class BarGenerator(object):
         self.lastTick[symbol] = tick
 
     #----------------------------------------------------------------------
-    def updateBar(self, bar):
+    def updateBar(self, bar, force_update=False):
         """
         bar is a dict here, symbol paired with bar data
         so xminBar here should be a dict too
@@ -458,7 +458,7 @@ class BarGenerator(object):
             
         # X分钟已经走完
         anySymbol = bar.keys()[0]
-        if not (bar[anySymbol].datetime.minute + 1) % self.xmin:   # 可以用X整除
+        if not (bar[anySymbol].datetime.minute + 1) % self.xmin or force_update:   # 可以用X整除
             # 生成上一X分钟K线的时间戳
             for symbol, b in bar.items():
                 self.xminBar[symbol].datetime = self.xminBar[symbol].datetime.replace(second=0, microsecond=0)  # 将秒和微秒设为0
@@ -498,7 +498,7 @@ class ArrayManager(object):
     def updateBar(self, bar):
         """更新K线"""
         self.count += 1
-        if not self.inited and self.count >= self.size:
+        if not self.inited: #and self.count >= self.size:
             self.inited = True
 
         self.openArray[0:self.size-1] = self.openArray[1:self.size]
