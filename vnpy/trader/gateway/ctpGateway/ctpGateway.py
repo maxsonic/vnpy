@@ -622,7 +622,7 @@ class CtpTdApi(TdApi):
         order.exchange = exchangeMapReverse[data['ExchangeID']]
         order.vtSymbol = order.symbol
         order.orderID = data['OrderRef']
-        order.vtOrderID = '.'.join([self.gatewayName, order.orderID])        
+        order.vtOrderID = '_._'.join([self.gatewayName, order.orderID])        
         order.direction = directionMapReverse.get(data['Direction'], DIRECTION_UNKNOWN)
         order.offset = offsetMapReverse.get(data['CombOffsetFlag'], OFFSET_UNKNOWN)
         order.status = STATUS_REJECTED
@@ -1062,7 +1062,7 @@ class CtpTdApi(TdApi):
         # 但在本接口设计中，已经考虑了CTP的OrderRef的自增性，避免重复
         # 唯一可能出现OrderRef重复的情况是多处登录并在非常接近的时间内（几乎同时发单）
         # 考虑到VtTrader的应用场景，认为以上情况不会构成问题
-        order.vtOrderID = '.'.join([self.gatewayName, order.orderID])        
+        order.vtOrderID = '_._'.join([self.gatewayName, order.orderID])        
         
         order.direction = directionMapReverse.get(data['Direction'], DIRECTION_UNKNOWN)
         order.offset = offsetMapReverse.get(data['CombOffsetFlag'], OFFSET_UNKNOWN)
@@ -1093,10 +1093,10 @@ class CtpTdApi(TdApi):
         trade.vtSymbol = trade.symbol #'.'.join([trade.symbol, trade.exchange])
         
         trade.tradeID = data['TradeID']
-        trade.vtTradeID = '.'.join([self.gatewayName, trade.tradeID])
+        trade.vtTradeID = '_._'.join([self.gatewayName, trade.tradeID])
         
         trade.orderID = data['OrderRef']
-        trade.vtOrderID = '.'.join([self.gatewayName, trade.orderID])
+        trade.vtOrderID = '_._'.join([self.gatewayName, trade.orderID])
         
         # 方向
         trade.direction = directionMapReverse.get(data['Direction'], '')
@@ -1122,7 +1122,7 @@ class CtpTdApi(TdApi):
         order.exchange = exchangeMapReverse[data['ExchangeID']]
         order.vtSymbol = order.symbol
         order.orderID = data['OrderRef']
-        order.vtOrderID = '.'.join([self.gatewayName, order.orderID])        
+        order.vtOrderID = '_._'.join([self.gatewayName, order.orderID])        
         order.direction = directionMapReverse.get(data['Direction'], DIRECTION_UNKNOWN)
         order.offset = offsetMapReverse.get(data['CombOffsetFlag'], OFFSET_UNKNOWN)
         order.status = STATUS_REJECTED
@@ -1490,7 +1490,7 @@ class CtpTdApi(TdApi):
         self.reqOrderInsert(req, self.reqID)
         
         # 返回订单号（字符串），便于某些算法进行动态管理
-        vtOrderID = '.'.join([self.gatewayName, str(self.orderRef)])
+        vtOrderID = '_._'.join([self.gatewayName, str(self.orderRef)])
         return vtOrderID
     
     #----------------------------------------------------------------------

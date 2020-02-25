@@ -55,6 +55,8 @@ class CtaEngine(object):
         # key为vtOrderID，value为strategy对象
         self.orderStrategyDict = {}
 
+        # self.processedOrder = {}
+
         # 本地停止单编号计数
         self.stopOrderCount = 0
         # stopOrderID = STOPORDERPREFIX + str(stopOrderCount)
@@ -293,10 +295,11 @@ class CtaEngine(object):
 
         if vtOrderID in self.orderStrategyDict:
             strategy = self.orderStrategyDict[vtOrderID]
+            skey = "%s_%s" % (strategy.name, vtOrderID)
 
             # 如果委托已经完成（拒单、撤销、全成），则从活动委托集合中移除
             if order.status in self.STATUS_FINISHED:
-                self.writeCtaLog("order id %s %s, OrderedDictkey %s  %s" % (order.vtOrderID, order.vtSymbol, self.orderStrategyDict.keys(), self.orderStrategyDict))
+                self.writeCtaLog("order id %s %s, OrderedDictkey %s  %s" % (skey, order.vtSymbol, self.orderStrategyDict.keys(), self.orderStrategyDict))
                 s = self.strategyOrderDict[strategy.name]
                 if vtOrderID in s:
                     s.remove(vtOrderID)
@@ -315,8 +318,14 @@ class CtaEngine(object):
 
         # 将成交推送到策略对象中
         if trade.vtOrderID in self.orderStrategyDict:
-            self.writeCtaLog("order id %s %s, OrderedDictkey %s  %s" % (trade.vtOrderID, trade.vtSymbol, self.orderStrategyDict.keys(), self.orderStrategyDict))
             strategy = self.orderStrategyDict[trade.vtOrderID]
+            skey = "%s_%s" % (strategy.name, vtOrderID)
+            self.writeCtaLog("trande order id %s %s, OrderedDictkey %s  %s" % (skey, trade.vtSymbol, self.orderStrategyDict.keys(), self.orderStrategyDict))
+
+            # if self.processedOrder.get(skey) is not None:
+            #     return
+            # else: 
+            #     self.processedOrder[skey] = True
 
             # 计算策略持仓
             if trade.direction == DIRECTION_LONG:
