@@ -319,7 +319,7 @@ class CtaEngine(object):
         # 将成交推送到策略对象中
         if trade.vtOrderID in self.orderStrategyDict:
             strategy = self.orderStrategyDict[trade.vtOrderID]
-            skey = "%s_%s" % (strategy.name, vtOrderID)
+            skey = "%s_%s" % (strategy.name, trade.vtOrderID)
             self.writeCtaLog("trande order id %s %s, OrderedDictkey %s  %s" % (skey, trade.vtSymbol, self.orderStrategyDict.keys(), self.orderStrategyDict))
 
             # if self.processedOrder.get(skey) is not None:
