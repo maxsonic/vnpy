@@ -287,12 +287,9 @@ def get_ext_modules():
             vnctptd, vnctpmd,
             vnxtptd, vnxtpmd,
             vnsgittd, vnsgitmd,
-            vnksgoldmd, vnksgoldtd,
-            vnoes
+            vnksgoldmd, vnksgoldtd
         ]
 
-    ext_modules = check_extension_build_flag(
-        ext_modules, "VNPY_BUILD_OES", vnoes)
     ext_modules = check_extension_build_flag(
         ext_modules, "VNPY_BUILD_CTP", vnctptd)
     ext_modules = check_extension_build_flag(

@@ -128,7 +128,7 @@ class BacktestingEngine:
         self.interval = None
         self.days = 0
         self.callback = None
-        self.history_data = []
+        self.history_data: Dict[Tuple, BarData] = {}
 
         self.stop_order_count = 0
         self.stop_orders = {}

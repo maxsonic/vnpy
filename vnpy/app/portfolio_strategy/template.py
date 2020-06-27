@@ -132,6 +132,12 @@ class StrategyTemplate(ABC):
         """
         pass
 
+    def on_trade(self, trade: TradeData) -> None:
+        pass
+
+    def on_order(self, order: OrderData) -> None:
+        pass
+
     def update_trade(self, trade: TradeData) -> None:
         """
         Callback of new trade data update.
@@ -140,6 +146,8 @@ class StrategyTemplate(ABC):
             self.pos[trade.vt_symbol] += trade.volume
         else:
             self.pos[trade.vt_symbol] -= trade.volume
+
+        self.on_trade(trade)
 
     def update_order(self, order: OrderData) -> None:
         """
@@ -151,6 +159,8 @@ class StrategyTemplate(ABC):
             self.active_orderids.add(order.vt_orderid)
         elif order.vt_orderid in self.active_orderids:
             self.active_orderids.remove(order.vt_orderid)
+
+        self.on_trade(trade)
 
     def buy(self, vt_symbol: str, price: float, volume: float, lock: bool = False) -> List[str]:
         """

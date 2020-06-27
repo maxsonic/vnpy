@@ -78,6 +78,8 @@ class ManagerEngine(BaseEngine):
                 start = bar.datetime
 
         # insert into database
+        database_manager.delete_bar_data(symbol=symbol, interval=interval,
+                                         exchange=exchange)
         database_manager.save_bar_data(bars)
 
         end = bar.datetime

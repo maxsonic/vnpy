@@ -137,7 +137,7 @@ class BacktestingEngine:
         interval_delta = INTERVAL_DELTA_MAP[self.interval]
 
         for vt_symbol in self.vt_symbols:
-            start = self.start
+            start = self.start - timedelta(days=self.days)
             end = self.start + progress_delta
             progress = 0
 
@@ -483,7 +483,7 @@ class BacktestingEngine:
                 self.bars[vt_symbol] = bar
             else:
                 dt_str = dt.strftime("%Y-%m-%d %H:%M:%S")
-                self.output(f"数据缺失：{dt_str} {vt_symbol}")
+                # self.output(f"数据缺失：{dt_str} {vt_symbol}")
 
         self.cross_limit_order()
         self.strategy.on_bars(self.bars)

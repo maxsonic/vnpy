@@ -159,6 +159,9 @@ class StrategyEngine(BaseEngine):
             return
 
         self.call_strategy_func(strategy, strategy.update_trade, trade)
+        
+        # To sync the trade data automatically
+        self.sync_strategy_data(strategy)
 
     def process_position_event(self, event: Event):
         """"""
@@ -237,7 +240,7 @@ class StrategyEngine(BaseEngine):
 
     def load_bars(self, strategy: StrategyTemplate, days: int, interval: Interval):
         """"""
-        vt_symbols = strategy.vt_symbols
+        vt_symbols = strategy.single_symbols
         dts: Set[datetime] = set()
         history_data: Dict[Tuple, BarData] = {}
 
@@ -262,7 +265,7 @@ class StrategyEngine(BaseEngine):
                     bars[vt_symbol] = bar
                 else:
                     dt_str = dt.strftime("%Y-%m-%d %H:%M:%S")
-                    self.write_log(f"数据缺失：{dt_str} {vt_symbol}", strategy)
+                    # self.write_log(f"数据缺失：{dt_str} {vt_symbol}", strategy)
 
             self.call_strategy_func(strategy, strategy.on_bars, bars)
 
@@ -374,13 +377,23 @@ class StrategyEngine(BaseEngine):
 
         # Subscribe market data
         for vt_symbol in strategy.vt_symbols:
-            contract: ContractData = self.main_engine.get_contract(vt_symbol)
-            if contract:
-                req = SubscribeRequest(
-                    symbol=contract.symbol, exchange=contract.exchange)
-                self.main_engine.subscribe(req, contract.gateway_name)
-            else:
-                self.write_log(f"行情订阅失败，找不到合约{vt_symbol}", strategy)
+            all_contacts = self.main_engine.get_all_contacts()
+
+            for any_contract in all_contacts:
+                if vt_symbol in any_contract.symbol:
+
+                    if hasattr(strategy, "single_symbols"):
+                        strategy.single_symbols.append(vt_symbol)
+                    else:
+                        strategy.single_symbols = [vt_symbol]
+
+                    contract: ContractData = self.main_engine.get_contract(vt_symbol)
+                    if contract:
+                        req = SubscribeRequest(
+                            symbol=contract.symbol, exchange=contract.exchange)
+                        self.main_engine.subscribe(req, contract.gateway_name)
+                    else:
+                        self.write_log(f"行情订阅失败，找不到合约{vt_symbol}", strategy)
 
         # Put event to update init completed status.
         strategy.inited = True
