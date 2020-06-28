@@ -3,6 +3,7 @@
 import importlib
 import os
 import traceback
+import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Set, Tuple, Type, Any, Callable
@@ -405,9 +406,9 @@ class StrategyEngine(BaseEngine):
         Start a strategy.
         """
         strategy = self.strategies[strategy_name]
-        if not strategy.inited:
+        while not strategy.inited:
             self.write_log(f"策略{strategy.strategy_name}启动失败，请先初始化")
-            return
+            time.sleep(10)
 
         if strategy.trading:
             self.write_log(f"{strategy_name}已经启动，请勿重复操作")
