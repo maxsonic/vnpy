@@ -48,6 +48,9 @@ from .base import (
     EVENT_PORTFOLIO_LOG,
     EVENT_PORTFOLIO_STRATEGY
 )
+
+from vnpy.app.cta_strategy.base import EVENT_CTA_LOG
+
 from .template import StrategyTemplate
 
 
@@ -619,7 +622,7 @@ class StrategyEngine(BaseEngine):
             msg = f"{strategy.strategy_name}: {msg}"
 
         log = LogData(msg=msg, gateway_name="CtaStrategy")
-        event = Event(type=EVENT_PORTFOLIO_LOG, data=log)
+        event = Event(type=EVENT_CTA_LOG, data=log)
         self.event_engine.put(event)
 
     def send_email(self, msg: str, strategy: StrategyTemplate = None):
