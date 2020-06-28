@@ -879,7 +879,7 @@ class CtpTdApi(TdApi):
         self.reqForQuoteInsert(ctp_req, self.reqid)
 
         orderid = f"{self.frontid}_{self.sessionid}_{self.order_ref}"
-        vt_orderid = f"{self.gateway_name}.{orderid}"
+        vt_orderid = f"{self.gateway_name}_._{orderid}"
 
         return vt_orderid
 
