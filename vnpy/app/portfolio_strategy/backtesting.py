@@ -116,9 +116,11 @@ class BacktestingEngine:
             self, strategy_class.__name__, self.vt_symbols, setting
         )
 
-    def load_data(self, init_days=30) -> None:
+    def load_data(self, init_days=30, print_flag=False) -> None:
         """"""
-        self.output("开始加载历史数据")
+
+        if print_flag:
+            self.output("开始加载历史数据")
 
         if not self.end:
             self.end = datetime.now()
@@ -160,7 +162,8 @@ class BacktestingEngine:
                 progress += progress_delta / total_delta
                 progress = min(progress, 1)
                 progress_bar = "#" * int(progress * 10)
-                self.output(f"{vt_symbol}加载进度：{progress_bar} [{progress:.0%}]")
+                if print_flag:
+                    self.output(f"{vt_symbol}加载进度：{progress_bar} [{progress:.0%}]")
 
                 start = end + interval_delta
                 end += (progress_delta + interval_delta)
@@ -691,7 +694,7 @@ class ContractDailyResult:
         pre_close: float,
         start_pos: float,
         size: int,
-        rate: float,
+        rate,
         slippage: float
     ) -> None:
         """"""
@@ -724,7 +727,10 @@ class ContractDailyResult:
             self.trading_pnl += pos_change * (self.close_price - trade.price) * size
             self.slippage += trade.volume * size * slippage
             self.turnover += turnover
-            self.commission += turnover * rate
+            if type(rate) == float or type(rate) == int:
+                self.commission += turnover * rate
+            else:
+                self.commission += rate(turnover)
 
         # Net pnl takes account of commission and slippage cost
         self.total_pnl = self.trading_pnl + self.holding_pnl
