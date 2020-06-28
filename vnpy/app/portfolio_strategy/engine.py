@@ -383,11 +383,6 @@ class StrategyEngine(BaseEngine):
             for any_contract in all_contacts:
                 if vt_symbol in any_contract.symbol:
 
-                    if hasattr(strategy, "single_symbols"):
-                        strategy.single_symbols.append(vt_symbol)
-                    else:
-                        strategy.single_symbols = [vt_symbol]
-
                     contract: ContractData = self.main_engine.get_contract(vt_symbol)
                     if contract:
                         req = SubscribeRequest(
