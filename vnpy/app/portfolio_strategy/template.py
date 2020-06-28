@@ -132,9 +132,11 @@ class StrategyTemplate(ABC):
         """
         pass
 
+    @virtual
     def on_trade(self, trade: TradeData) -> None:
         pass
 
+    @virtual
     def on_order(self, order: OrderData) -> None:
         pass
 
@@ -160,7 +162,7 @@ class StrategyTemplate(ABC):
         elif order.vt_orderid in self.active_orderids:
             self.active_orderids.remove(order.vt_orderid)
 
-        self.on_trade(trade)
+        self.on_order(order)
 
     def buy(self, vt_symbol: str, price: float, volume: float, lock: bool = False) -> List[str]:
         """
