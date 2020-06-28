@@ -116,7 +116,7 @@ class BacktestingEngine:
             self, strategy_class.__name__, self.vt_symbols, setting
         )
 
-    def load_data(self) -> None:
+    def load_data(self, init_days=30) -> None:
         """"""
         self.output("开始加载历史数据")
 
@@ -137,7 +137,7 @@ class BacktestingEngine:
         interval_delta = INTERVAL_DELTA_MAP[self.interval]
 
         for vt_symbol in self.vt_symbols:
-            start = self.start - timedelta(days=self.days)
+            start = self.start - timedelta(days=init_days)
             end = self.start + progress_delta
             progress = 0
 
