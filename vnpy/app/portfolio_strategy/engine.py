@@ -381,12 +381,13 @@ class StrategyEngine(BaseEngine):
 
         # Subscribe market data
         for vt_symbol in strategy.vt_symbols:
-            all_contacts = self.main_engine.get_all_contacts()
+            symbol, exchange = vt_symbol.split(".")
+            all_contacts = self.main_engine.get_all_contracts()
 
             for any_contract in all_contacts:
-                if vt_symbol in any_contract.symbol:
+                if symbol in any_contract.symbol:
 
-                    contract: ContractData = self.main_engine.get_contract(vt_symbol)
+                    contract: ContractData = self.main_engine.get_contract(any_contract.symbol+"."+exchange)
                     if contract:
                         req = SubscribeRequest(
                             symbol=contract.symbol, exchange=contract.exchange)
@@ -405,7 +406,7 @@ class StrategyEngine(BaseEngine):
         """
         strategy = self.strategies[strategy_name]
         while not strategy.inited:
-            self.write_log(f"策略{strategy.strategy_name}启动失败，请先初始化")
+            self.write_log(f"策略{strategy.strategy_name}启动中")
             time.sleep(10)
 
         if strategy.trading:
