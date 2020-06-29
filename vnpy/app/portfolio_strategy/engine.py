@@ -126,8 +126,10 @@ class StrategyEngine(BaseEngine):
     def process_tick_event(self, event: Event):
         """"""
         tick: TickData = event.data
+        digits = "1234567890"
+        s = tick.vt_symbol.translate({ord(k): None for k in digits})
+        strategies = self.symbol_strategy_map[s]
 
-        strategies = self.symbol_strategy_map[tick.vt_symbol]
         if not strategies:
             return
 
