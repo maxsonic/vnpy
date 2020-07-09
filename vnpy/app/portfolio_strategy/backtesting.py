@@ -807,8 +807,9 @@ class PortfolioDailyResult:
         self.close_prices = close_prices
 
         for vt_symbol, close_price in close_prices.items():
-            contract_result = self.contract_results[vt_symbol]
-            contract_result.update_close_price(close_price)
+            contract_result = self.contract_results.get(vt_symbol)
+            if contract_result is not None: 
+                contract_result.update_close_price(close_price)
 
 
 @lru_cache(maxsize=999)
