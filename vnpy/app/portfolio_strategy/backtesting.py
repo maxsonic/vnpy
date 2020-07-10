@@ -167,8 +167,8 @@ class BacktestingEngine:
 
                 start = end + interval_delta
                 end += (progress_delta + interval_delta)
-
-            self.output(f"{vt_symbol}历史数据加载完成，数据量：{data_count}")
+            if data_count > 0:
+                self.output(f"{vt_symbol}历史数据加载完成，数据量：{data_count}")
 
         self.output("所有历史数据加载完成")
 
@@ -259,6 +259,9 @@ class BacktestingEngine:
                 results[key].append(value)
 
         self.daily_df = DataFrame.from_dict(results).set_index("date")
+
+        start_date = self.daily_df.index[0] + pd.Timedelta(days=self.days)
+        self.daily_df = self.daily_df[ self.daily_df.index >= start_date]
 
         self.output("逐日盯市盈亏计算完成")
         return self.daily_df

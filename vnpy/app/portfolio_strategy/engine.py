@@ -349,7 +349,7 @@ class StrategyEngine(BaseEngine):
             strategies = self.symbol_strategy_map[vt_symbol]
             strategies.append(strategy)
 
-        self.save_strategy_setting()
+        # self.save_strategy_setting()
         self.put_strategy_event(strategy)
 
     def init_strategy(self, strategy_name: str):
