@@ -4,6 +4,7 @@ from typing import Dict, List, Set, Tuple
 from functools import lru_cache
 import traceback
 
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
