@@ -628,13 +628,13 @@ class StrategyEngine(BaseEngine):
         event = Event(type=EVENT_CTA_LOG, data=log)
         self.event_engine.put(event)
 
-    def send_email(self, msg: str, strategy: StrategyTemplate = None):
+    def send_email(self, subject: str, msg: str, strategy: StrategyTemplate = None):
         """
         Send email to default receiver.
         """
-        if strategy:
-            subject = f"{strategy.strategy_name}"
-        else:
-            subject = "组合策略引擎"
+        # if strategy:
+        #     subject = f"{strategy.strategy_name}"
+        # else:
+        #     subject = "组合策略引擎"
 
         self.main_engine.send_email(subject, msg)
