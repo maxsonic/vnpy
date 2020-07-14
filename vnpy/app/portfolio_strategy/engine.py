@@ -386,8 +386,13 @@ class StrategyEngine(BaseEngine):
             symbol, exchange = vt_symbol.split(".")
             all_contacts = self.main_engine.get_all_contracts()
 
+
             for any_contract in all_contacts:
-                if symbol in any_contract.symbol:
+
+                digits = "1234567890"
+                sym = any_contract.symbol.translate({ord(k): None for k in digits})
+
+                if symbol == sym:
 
                     contract: ContractData = self.main_engine.get_contract(any_contract.symbol+"."+exchange)
                     if contract:
@@ -395,6 +400,7 @@ class StrategyEngine(BaseEngine):
                             symbol=contract.symbol, exchange=contract.exchange)
                         self.main_engine.subscribe(req, contract.gateway_name)
                     else:
+                        self.write_log(f"行情订阅失败，找不到合约 %s" % sym)
                         self.write_log(f"行情订阅失败，找不到合约{vt_symbol}", strategy)
 
         # Put event to update init completed status.
