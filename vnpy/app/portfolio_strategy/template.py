@@ -253,12 +253,12 @@ class StrategyTemplate(ABC):
         if self.inited:
             self.strategy_engine.put_strategy_event(self)
 
-    def send_email(self, msg) -> None:
+    def send_email(self, subject, msg) -> None:
         """
         Send email to default receiver.
         """
         if self.inited:
-            self.strategy_engine.send_email(msg, self)
+            self.strategy_engine.send_email(subject, msg, self)
 
     def sync_data(self):
         """
