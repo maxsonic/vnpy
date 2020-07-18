@@ -261,7 +261,8 @@ class BacktestingEngine:
 
         self.daily_df = DataFrame.from_dict(results).set_index("date")
 
-        start_date = self.daily_df.index[0] + pd.Timedelta(days=self.days)
+        days_count = (self.days / 5 * 10)
+        start_date = self.daily_df.index[0] + pd.Timedelta(days=days_count)
         self.daily_df = self.daily_df[ self.daily_df.index >= start_date]
 
         self.output("逐日盯市盈亏计算完成")
